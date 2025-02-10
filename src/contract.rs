@@ -1,5 +1,4 @@
 use std::collections::{HashMap, HashSet};
-use chacha20_poly1305::{ChaCha20Poly1305, Key};
 use sha2::{Digest, Sha256};
 use cosmwasm_std::{
     entry_point, Addr, DepsMut, Env, MessageInfo, Response, StdError, StdResult
@@ -7,7 +6,7 @@ use cosmwasm_std::{
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg};
-use crate::state::{config, CommunityCards, Deck, GameState, PlayerCards, State};
+use crate::state::{load_table, save_table, CommunityCards, Deck, GameState, PlayerCards, PokerTable};
 
 #[entry_point]
 pub fn instantiate(
@@ -16,8 +15,6 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, StdError> {
-    deps.api
-        .debug(&format!("Contract was initialized by {}", info.sender));
 
     Ok(Response::default())
 }
@@ -30,32 +27,74 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::StartGame {table_id, players} => start_game(deps, env, table_id, players),
+        ExecuteMsg::StartGame {table_id,players } => start_game(deps, env, table_id, players),
+        ExecuteMsg::CommunityCards {table_id, game_state} => distribute_community_cards(deps, env, table_id, game_state),
     }
 }
+
+pub fn distribute_community_cards(
+    deps: DepsMut,
+    env: Env,
+    table_id: u32,
+    game_state: GameState,
+) -> Result<Response, ContractError> {
+
+    let table = load_table(deps.storage, table_id);
+
+    if table.is_none() {
+        return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
+            "Table not found",
+        )));
+    }
+
+
+    let table = table.unwrap();
+    let cards = match (table.game_state.clone(), &game_state) {
+        (GameState::GameStart, GameState::Flop) => Some(table.community_cards.flop.clone()), 
+        (GameState::Flop, GameState::Turn) => Some(vec![table.community_cards.turn]), 
+        (GameState::Turn, GameState::River) => Some(vec![table.community_cards.river]), 
+        _ => return Err(ContractError::Std(cosmwasm_std::StdError::generic_err(
+            "Invalid game state transition",
+        ))),
+    };
+
+    
+    let mut updated_table = table.clone();
+    let game_state_clone = game_state.clone();
+    updated_table.game_state = game_state;
+    save_table(deps.storage, table_id, &updated_table);
+
+    
+    Ok(Response::new()
+        .add_attribute("action", format!("Distributing {:?} cards", game_state_clone))
+        .add_attribute("table_id", table_id.to_string())
+        .add_attribute("cards", format!("{:?}", cards.unwrap())))
+}
+
 
 
 pub fn start_game(
     deps: DepsMut,
     env: Env,
     table_id: u32,
-    players: HashMap<u8, (Addr, u64)>,
+    players: Vec<(u8, String, u64)>,
 ) -> Result<Response, ContractError> {
     
     if players.len() < 2 || players.len() > 9 {
         return Err(ContractError::from(cosmwasm_std::StdError::generic_err("Le nombre de joueurs doit être entre 2 et 9")));
     }
-    for &seat in players.keys() {
+    for &(seat, _, _) in &players {
         if seat > 8 {
             return Err(ContractError::from(cosmwasm_std::StdError::generic_err(format!("Seat index {} invalide", seat))));
         }
     }
-    let unique_players: HashSet<&Addr> = players.values().map(|(addr, _)| addr).collect();
+    let unique_players: HashSet<Addr> = players.iter().map(|(_, addr, _)| Addr::unchecked(addr)).collect();
     if unique_players.len() != players.len() {
         return Err(ContractError::from(cosmwasm_std::StdError::generic_err("Clés publiques dupliquées détectées")));
     }
-    for (_, (_, seed)) in &players {
-        if *seed == 0 {
+
+    for &(_, _, seed) in &players {
+        if seed == 0 {
             return Err(ContractError::from(cosmwasm_std::StdError::generic_err("Un joueur a envoyé un seed invalide (0)")));
         }
     }
@@ -71,7 +110,7 @@ pub fn start_game(
     let mut player_cards: HashMap<u8, PlayerCards> = HashMap::new();
     let mut deck_iter = deck.cards.iter();
     
-    for &seat in players.keys() {
+    for &(seat, _, _) in &players {
         let hole_cards = vec![deck_iter.next().unwrap(), deck_iter.next().unwrap()];
         player_cards.insert(seat, PlayerCards { hole_cards: hole_cards.iter().map(|card| card.to_bytes()).collect() });
     }
@@ -92,31 +131,29 @@ pub fn start_game(
     let encrypted_cards = encrypt_player_cards(&players, &player_cards)?;
 
     
-    let state = State {
+    let table = PokerTable {
         game_state: GameState::GameStart,
-        owner: env.contract.address.clone(),
         player_cards,
         community_cards,
     };
-    config(deps.storage).save(&state)?;
+
+    save_table(deps.storage, table_id, &table);
 
     deps.api.debug(&format!("🃏 Deck mélangé avec le seed final : {}", final_seed));
 
     Ok(Response::new()
-        .add_attribute("action", "game_started")
+        .add_attribute("action", "1. Dealing cards")
         .add_attribute("table_id", table_id.to_string())
-        .add_attribute("final_seed", final_seed.to_string())
         .add_attribute("encrypted_cards", format!("{:?}", encrypted_cards))) 
 }
 
-
 pub fn encrypt_player_cards(
-    players: &HashMap<u8, (Addr, u64)>,
+    players: &Vec<(u8, String, u64)>,
     player_cards: &HashMap<u8, PlayerCards>,
 ) -> StdResult<HashMap<u8, Vec<u8>>> {
     let mut encrypted_cards = HashMap::new();
 
-    for (seat, _) in players {
+    for (seat, _, _) in players {
         let cards = &player_cards[seat].hole_cards;
         encrypted_cards.insert(*seat, cards.clone());
     }
@@ -136,13 +173,13 @@ fn derive_encryption_key(addr: &Addr) -> [u8; 32] {
 
 pub fn generate_final_seed(
     env: &Env,
-    players: &HashMap<u8, (Addr, u64)>,
+    players: &Vec<(u8, String, u64)>,
 ) -> StdResult<u64> {
     
     let mut hasher = Sha256::new();
 
     
-    for (seat, (_, seed)) in players {
+    for (seat, _, seed) in players {
         hasher.update(&seat.to_le_bytes()); 
         hasher.update(&seed.to_le_bytes()); 
     }
@@ -189,3 +226,4 @@ fn generate_pseudo_random_index(seed: u64, round: u64, max: usize) -> usize {
     
     (random_value as usize) % (max + 1)
 }
+

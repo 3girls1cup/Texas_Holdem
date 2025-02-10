@@ -1,12 +1,30 @@
 use std::collections::HashMap;
 
 use schemars::JsonSchema;
+use secret_toolkit_serialization::{Bincode2, Serde};
 use serde::{Deserialize, Serialize};
-use cosmwasm_std::{Addr, Storage};
-use cosmwasm_storage::{singleton, singleton_read, ReadonlySingleton, Singleton};
+use cosmwasm_std::Storage;
+use cosmwasm_storage::{bucket, prefixed, Bucket, PrefixedStorage};
 
+pub const PREFIX_TABLES: &[u8] = b"tables";
 
-pub static CONFIG_KEY: &[u8] = b"config";
+pub fn init_table_store(storage: &mut dyn Storage) -> Bucket<PokerTable> {
+    bucket(storage, PREFIX_TABLES)
+}
+
+pub fn save_table(storage: &mut dyn Storage, table_id: u32, table: &PokerTable) {
+    let mut table_store = init_table_store(storage);
+    table_store.save(&table_id.to_be_bytes(), table).unwrap();
+}
+
+pub fn load_table(storage: &mut dyn Storage, table_id: u32) -> Option<PokerTable> {
+    let table_store = init_table_store(storage);
+    match table_store.may_load(&table_id.to_be_bytes()) {
+        Ok(Some(table)) => Some(table),
+        Ok(None) => None,
+        Err(_) => None,
+    }
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct PlayerCards {
@@ -21,14 +39,14 @@ pub struct CommunityCards {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-pub struct State {
+pub struct PokerTable {
     pub game_state: GameState,
-    pub owner: Addr,
     pub player_cards: HashMap<u8, PlayerCards>, 
     pub community_cards: CommunityCards, 
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub enum GameState {
     GameStart,
     Flop,
@@ -91,14 +109,4 @@ impl Deck {
         Deck { cards }
     }
 }
-
-
-pub fn config(storage: &mut dyn Storage) -> Singleton<State> {
-    singleton(storage, CONFIG_KEY)
-}
-
-pub fn config_read(storage: &dyn Storage) -> ReadonlySingleton<State> {
-    singleton_read(storage, CONFIG_KEY)
-}
-
 
