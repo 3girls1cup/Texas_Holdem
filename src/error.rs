@@ -18,7 +18,7 @@ pub enum ContractError {
     GameStateError {
         method: String,
         table_id: u32,
-        needed: GameState,
+        needed: Option<GameState>,
         actual: GameState,
     },
 

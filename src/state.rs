@@ -28,6 +28,12 @@ pub fn load_table(storage: &dyn Storage, key: u32) -> Option<PokerTable> {
     TABLES_STORE.get(storage, &key)
 }
 
+pub fn delete_table(storage: &mut dyn Storage, key: u32) -> StdResult<()> {
+    TABLES_STORE.remove(storage, &key).map_err(|err| {
+        StdError::generic_err(format!("Failed to delete table: {}", err))
+    })
+}
+
 pub static PLAYER_SEED_STORE: Keymap<String, u64, Bincode2, WithoutIter> =
             KeymapBuilder::new(b"seeds").without_iter().build();
 
@@ -54,7 +60,7 @@ use super::*;
         let mut storage = MockStorage::new();
         let key = 1u32;
         let item = PokerTable {
-            game_state: GameState::GameStart,
+            game_state: GameState::PreFlop,
             player_cards: vec![(
                 "SDER".to_string(), 
                 PlayerCards { hole_cards: vec![] }
@@ -93,11 +99,10 @@ pub struct PokerTable {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum GameState {
-    GameStart,
+    PreFlop,
     Flop,
     Turn,
     River,
-    EndGame,
 }
 
 

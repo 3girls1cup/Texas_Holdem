@@ -7,7 +7,7 @@ use cosmwasm_std::{
 
 use crate::error::ContractError;
 use crate::msg::{CommunityCardsResponse, ExecuteMsg, HandResponse, InstantiateMsg, QueryMsg, QueryWithPermit, ResponsePayload, ShowdownResponse, StartGameResponse};
-use crate::state::{ load_table, save_table, CommunityCards, Config, Deck, GameState, PlayerCards, PokerTable, CONFIG_KEY, PREFIX_REVOKED_PERMITS};
+use crate::state::{ delete_table, load_table, save_table, CommunityCards, Config, Deck, GameState, PlayerCards, PokerTable, CONFIG_KEY, PREFIX_REVOKED_PERMITS};
 
 #[entry_point]
 pub fn instantiate(
@@ -59,9 +59,8 @@ fn showdown(
     let table = load_table(deps.storage, table_id)
         .ok_or_else(|| ContractError::TableNotFound { table_id })?;
 
-    if table.game_state == GameState::EndGame {
-        // The return statement is hard coded to needed GameState::River, but it could also be any other then EndGame
-        return Err(ContractError::GameStateError { method: "showdown".to_string(), table_id, needed: GameState::River, actual: table.game_state });
+    if !all_in_showdown && table.game_state != GameState::River {
+        return Err(ContractError::GameStateError { method: "showdown".to_string(), table_id, needed: Some(GameState::River), actual: table.game_state });
     }
 
     let mut player_hands: Vec<(String, Vec<u8>)> = Vec::new();
@@ -76,11 +75,7 @@ fn showdown(
         }
     }
 
-    let mut updated_table = table.clone();
-    updated_table.game_state = GameState::EndGame;
-
-    save_table(deps.storage, table_id, &updated_table)?;
-    
+    delete_table(deps.storage, table_id)?;
 
     let response = ResponsePayload::Showdown(ShowdownResponse {
         table_id,
@@ -99,7 +94,7 @@ fn showdown(
 fn handle_all_in_showdown(table: &PokerTable, all_in_showdown: bool) -> Option<Vec<u8>> {
     if all_in_showdown {
         match table.game_state {
-            GameState::GameStart => {
+            GameState::PreFlop => {
                 let mut cards = table.community_cards.flop.clone();
                 cards.push(table.community_cards.turn);
                 cards.push(table.community_cards.river);
@@ -124,7 +119,7 @@ fn distribute_community_cards(
         .ok_or_else(|| ContractError::TableNotFound { table_id })?;
 
     let cards = match (table.game_state.clone(), &game_state) {
-        (GameState::GameStart, GameState::Flop) => Some(table.community_cards.flop.clone()), 
+        (GameState::PreFlop, GameState::Flop) => Some(table.community_cards.flop.clone()), 
         (GameState::Flop, GameState::Turn) => Some(vec![table.community_cards.turn]), 
         (GameState::Turn, GameState::River) => Some(vec![table.community_cards.river]), 
         _ => return Err(ContractError::GameStateError { method: "distribute_community_cards".to_string(), table_id, needed: get_needed_game_state(game_state), actual: table.game_state.clone() }),
@@ -152,12 +147,12 @@ fn distribute_community_cards(
 }
 
 
-fn get_needed_game_state(requested_game_state: GameState) -> GameState {
+fn get_needed_game_state(requested_game_state: GameState) -> Option<GameState> {
     match requested_game_state {
-        GameState::Flop => GameState::GameStart,
-        GameState::Turn => GameState::Flop,
-        GameState::River => GameState::Turn,
-        _ => GameState::EndGame,
+        GameState::Flop => Some(GameState::PreFlop),
+        GameState::Turn => Some(GameState::Flop),
+        GameState::River => Some(GameState::Turn),
+        _ => None,
     }
 }
 
@@ -170,12 +165,10 @@ fn start_game(
 
     let table = load_table(deps.storage, table_id);
 
-    // If the table doesn't exist, it means it's a new virgin table
+    // If the table already exists, it means it hasn't ended yet
     if !table.is_none() {
         let table = table.unwrap();
-        if table.game_state != GameState::EndGame {
-            return Err(ContractError::GameStateError { method: "start_game".to_string(), table_id, needed: GameState::EndGame, actual: table.game_state });
-        }
+        return Err(ContractError::GameStateError { method: "start_game".to_string(), table_id, needed: None, actual: table.game_state });
     }
 
     if players.len() < 2 || players.len() > 9 {
@@ -214,7 +207,7 @@ fn start_game(
     };
 
     let table = PokerTable {
-        game_state: GameState::GameStart,
+        game_state: GameState::PreFlop,
         player_cards: player_cards.iter().map(|(s, p)| (s.clone(), p.clone())).collect(),
         community_cards,
     };
@@ -268,7 +261,6 @@ fn generate_derived_random_index(seed: u64, round: u64, max: usize) -> usize {
     let hash = hasher.finalize();
     
     let random_value = u64::from_le_bytes(hash[..8].try_into().unwrap());
-
     
     (random_value as usize) % (max + 1)
 }
