@@ -1,0 +1,349 @@
+{
+  "height": 9069046,
+  "timestamp": "2025-02-12T19:35:34Z",
+  "transactionHash": "36FBC99CBBB8FA6B5A810AB9D1D42A98AE4AE1CDA118315B58B1AC0E24CA0737",
+  "code": 0,
+  "codespace": "",
+  "info": "",
+  "tx": {
+    "@type": "/cosmos.tx.v1beta1.Tx",
+    "body": {
+      "messages": [
+        {
+          "@type": "/secret.compute.v1beta1.MsgExecuteContract",
+          "sender": "secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3",
+          "contract": "secret16t0vm5u7gpqzna4hx36ljh8sczgmvch58969ka",
+          "msg": {
+            "start_game": {
+              "table_id": 42,
+              "players": [
+                "secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3",
+                "secret1verdmwf2e0d930vulxru5fg3lm9y8r3xg5u7l6",
+                "secret1xywlcys0sgvvjf60mtvvu63np9sr9qj9msf947"
+              ]
+            }
+          },
+          "callback_code_hash": "",
+          "sent_funds": [],
+          "callback_sig": null
+        }
+      ],
+      "memo": "",
+      "timeout_height": "0",
+      "extension_options": [],
+      "non_critical_extension_options": []
+    },
+    "auth_info": {
+      "signer_infos": [
+        {
+          "public_key": {
+            "@type": "/cosmos.crypto.secp256k1.PubKey",
+            "key": "A92WgRgrkT56ma8iZZdYcfxWNwi3WZV8V/Rk9eS1jI8L"
+          },
+          "mode_info": {
+            "single": {
+              "mode": "SIGN_MODE_DIRECT"
+            }
+          },
+          "sequence": "19"
+        }
+      ],
+      "fee": {
+        "amount": [
+          {
+            "denom": "uscrt",
+            "amount": "10000"
+          }
+        ],
+        "gas_limit": "100000",
+        "payer": "",
+        "granter": ""
+      },
+      "tip": null
+    },
+    "signatures": [
+      "QJPLs0lmW0VQjMDrmSAfCtLVG/gq4KGtaq8e+43kRi8WExiy+Nb4C2Ct82jI8vE312rEhcogoaNScTTjwAiUAg=="
+    ]
+  },
+  "rawLog": "",
+  "jsonLog": [
+    {
+      "msg_index": 0,
+      "events": [
+        {
+          "type": "message",
+          "attributes": [
+            {
+              "key": "action",
+              "value": "/secret.compute.v1beta1.MsgExecuteContract"
+            },
+            {
+              "key": "sender",
+              "value": "secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3"
+            },
+            {
+              "key": "module",
+              "value": "compute"
+            },
+            {
+              "key": "contract_address",
+              "value": "secret16t0vm5u7gpqzna4hx36ljh8sczgmvch58969ka"
+            }
+          ]
+        },
+        {
+          "type": "execute",
+          "attributes": [
+            {
+              "key": "contract_address",
+              "value": "secret16t0vm5u7gpqzna4hx36ljh8sczgmvch58969ka"
+            }
+          ]
+        },
+        {
+          "type": "wasm",
+          "attributes": [
+            {
+              "key": "contract_address",
+              "value": "secret16t0vm5u7gpqzna4hx36ljh8sczgmvch58969ka"
+            },
+            {
+              "key": "response",
+              "value": "{\"type\":\"start_game\",\"table_id\":42,\"players\":[\"secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3\",\"secret1verdmwf2e0d930vulxru5fg3lm9y8r3xg5u7l6\",\"secret1xywlcys0sgvvjf60mtvvu63np9sr9qj9msf947\"],\"error\":null}"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "arrayLog": [
+    {
+      "msg": 0,
+      "type": "message",
+      "key": "action",
+      "value": "/secret.compute.v1beta1.MsgExecuteContract"
+    },
+    {
+      "msg": 0,
+      "type": "message",
+      "key": "sender",
+      "value": "secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3"
+    },
+    {
+      "msg": 0,
+      "type": "message",
+      "key": "module",
+      "value": "compute"
+    },
+    {
+      "msg": 0,
+      "type": "message",
+      "key": "contract_address",
+      "value": "secret16t0vm5u7gpqzna4hx36ljh8sczgmvch58969ka"
+    },
+    {
+      "msg": 0,
+      "type": "execute",
+      "key": "contract_address",
+      "value": "secret16t0vm5u7gpqzna4hx36ljh8sczgmvch58969ka"
+    },
+    {
+      "msg": 0,
+      "type": "wasm",
+      "key": "contract_address",
+      "value": "secret16t0vm5u7gpqzna4hx36ljh8sczgmvch58969ka"
+    },
+    {
+      "msg": 0,
+      "type": "wasm",
+      "key": "response",
+      "value": "{\"type\":\"start_game\",\"table_id\":42,\"players\":[\"secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3\",\"secret1verdmwf2e0d930vulxru5fg3lm9y8r3xg5u7l6\",\"secret1xywlcys0sgvvjf60mtvvu63np9sr9qj9msf947\"],\"error\":null}"
+    }
+  ],
+  "events": [
+    {
+      "type": "coin_spent",
+      "attributes": [
+        {
+          "key": "spender",
+          "value": "secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3",
+          "index": true
+        },
+        {
+          "key": "amount",
+          "value": "10000uscrt",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "coin_received",
+      "attributes": [
+        {
+          "key": "receiver",
+          "value": "secret17xpfvakm2amg962yls6f84z3kell8c5ljuhfkp",
+          "index": true
+        },
+        {
+          "key": "amount",
+          "value": "10000uscrt",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "transfer",
+      "attributes": [
+        {
+          "key": "recipient",
+          "value": "secret17xpfvakm2amg962yls6f84z3kell8c5ljuhfkp",
+          "index": true
+        },
+        {
+          "key": "sender",
+          "value": "secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3",
+          "index": true
+        },
+        {
+          "key": "amount",
+          "value": "10000uscrt",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "message",
+      "attributes": [
+        {
+          "key": "sender",
+          "value": "secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "tx",
+      "attributes": [
+        {
+          "key": "fee",
+          "value": "10000uscrt",
+          "index": true
+        },
+        {
+          "key": "fee_payer",
+          "value": "secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "tx",
+      "attributes": [
+        {
+          "key": "acc_seq",
+          "value": "secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3/19",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "tx",
+      "attributes": [
+        {
+          "key": "signature",
+          "value": "QJPLs0lmW0VQjMDrmSAfCtLVG/gq4KGtaq8e+43kRi8WExiy+Nb4C2Ct82jI8vE312rEhcogoaNScTTjwAiUAg==",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "message",
+      "attributes": [
+        {
+          "key": "action",
+          "value": "/secret.compute.v1beta1.MsgExecuteContract",
+          "index": true
+        },
+        {
+          "key": "sender",
+          "value": "secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3",
+          "index": true
+        },
+        {
+          "key": "msg_index",
+          "value": "0",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "message",
+      "attributes": [
+        {
+          "key": "module",
+          "value": "compute",
+          "index": true
+        },
+        {
+          "key": "sender",
+          "value": "secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3",
+          "index": true
+        },
+        {
+          "key": "contract_address",
+          "value": "secret16t0vm5u7gpqzna4hx36ljh8sczgmvch58969ka",
+          "index": true
+        },
+        {
+          "key": "msg_index",
+          "value": "0",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "execute",
+      "attributes": [
+        {
+          "key": "contract_address",
+          "value": "secret16t0vm5u7gpqzna4hx36ljh8sczgmvch58969ka",
+          "index": true
+        },
+        {
+          "key": "msg_index",
+          "value": "0",
+          "index": true
+        }
+      ]
+    },
+    {
+      "type": "wasm",
+      "attributes": [
+        {
+          "key": "contract_address",
+          "value": "secret16t0vm5u7gpqzna4hx36ljh8sczgmvch58969ka",
+          "index": true
+        },
+        {
+          "key": "response",
+          "value": "{\"type\":\"start_game\",\"table_id\":42,\"players\":[\"secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3\",\"secret1verdmwf2e0d930vulxru5fg3lm9y8r3xg5u7l6\",\"secret1xywlcys0sgvvjf60mtvvu63np9sr9qj9msf947\"],\"error\":null}",
+          "index": true
+        },
+        {
+          "key": "msg_index",
+          "value": "0",
+          "index": true
+        }
+      ]
+    }
+  ],
+  "data": [
+    {
+      "type": "Buffer",
+      "data": []
+    }
+  ],
+  "gasUsed": 37926,
+  "gasWanted": 100000,
+  "ibcResponses": []
+}

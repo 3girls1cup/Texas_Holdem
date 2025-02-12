@@ -3,12 +3,13 @@ import * as fs from "fs";
 // import dotenv from "dotenv";
 // dotenv.config();
 
-// const wallet = new Wallet(process.env.MNEMONIC);
-const wallet = new Wallet("desk pigeon hammer sleep only mistake stool december offer patrol once vacant");
+const wallet = new Wallet("pigeon desk hammer sleep only mistake stool december offer patrol once vacant");
+const wallet2 = new Wallet("desk pigeon hammer sleep only mistake stool december offer patrol once vacant");
+const wallet3 = new Wallet("hammer desk pigeon sleep only mistake stool december offer patrol once vacant");
 
 const secretjs = new SecretNetworkClient({
   chainId: "pulsar-3",
-  url: "https://api.pulsar3.scrttestnet.com",
+  url: "https://pulsar.lcd.secretnodes.com",
   wallet: wallet,
   walletAddress: wallet.address,
 });
@@ -31,15 +32,12 @@ const msg = {
   start_game: {
     table_id: 42,
     players: [
-      [0, "secret1xyz...", 987654321],
-      [1, "secret1abc...", 123456789],
-      [3, "secret1def...", 111222333],
-      [7, "secret1ghi...", 999888777],
+      wallet.address,
+      wallet2.address,
+      wallet3.address,
     ],
   },
 };
-
-
 
 let try_flip = async () => {
   const flip_tx = await secretjs.tx.compute.executeContract(
@@ -52,19 +50,7 @@ let try_flip = async () => {
     { gasLimit: 100_000 }
   );
 
-  console.log(flip_tx);
+  fs.writeFileSync("flip_tx.json", JSON.stringify(flip_tx, null, 2));
+  console.log("Transaction saved to flip_tx.json");
 };
 try_flip();
-
-let query_flip = async () => {
-  let flip_tx = await secretjs.query.compute.queryContract({
-    contract_address: "secret1dfsvyqhcs9n32q8lywuuvecvshmnatempuu32r",
-    code_hash: "d896d5a9921a95c3302863de9c8e82e99fa9531d7a962d228a1a635f26bc0449",
-    query: {
-      get_flip: {},
-    },
-  });
-  console.log(flip_tx);
-};
-
-// query_flip();

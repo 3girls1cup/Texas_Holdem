@@ -1,31 +1,76 @@
-use std::collections::HashMap;
-
 use schemars::JsonSchema;
-use secret_toolkit_serialization::{Bincode2, Serde};
+use secret_toolkit_serialization::{Bincode2, Json};
+use secret_toolkit_storage::{Item, Keymap, KeymapBuilder, WithoutIter};
 use serde::{Deserialize, Serialize};
-use cosmwasm_std::Storage;
-use cosmwasm_storage::{bucket, prefixed, Bucket, PrefixedStorage};
+use cosmwasm_std::{Addr, StdError, StdResult, Storage};
 
-pub const PREFIX_TABLES: &[u8] = b"tables";
 
-pub fn init_table_store(storage: &mut dyn Storage) -> Bucket<PokerTable> {
-    bucket(storage, PREFIX_TABLES)
+pub const PREFIX_REVOKED_PERMITS: &str = "revoked_permits";
+
+pub static CONFIG_KEY: Item<Config> = Item::new(b"config");
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+pub struct Config {
+    pub owner: Addr,
+    pub contract_address: Addr,
 }
 
-pub fn save_table(storage: &mut dyn Storage, table_id: u32, table: &PokerTable) {
-    let mut table_store = init_table_store(storage);
-    table_store.save(&table_id.to_be_bytes(), table).unwrap();
+pub static TABLES_STORE: Keymap<u32, PokerTable, Json, WithoutIter> =
+            KeymapBuilder::new(b"tables").without_iter().build();
+
+pub fn save_table(storage: &mut dyn Storage, key: u32, item: &PokerTable) -> StdResult<()> {
+    TABLES_STORE.insert(storage, &key, item).map_err(|err| {
+        StdError::generic_err(format!("Failed to save table: {}", err))
+    })
 }
 
-pub fn load_table(storage: &mut dyn Storage, table_id: u32) -> Option<PokerTable> {
-    let table_store = init_table_store(storage);
-    match table_store.may_load(&table_id.to_be_bytes()) {
-        Ok(Some(table)) => Some(table),
-        Ok(None) => None,
-        Err(_) => None,
+pub fn load_table(storage: &dyn Storage, key: u32) -> Option<PokerTable> {
+    TABLES_STORE.get(storage, &key)
+}
+
+pub static PLAYER_SEED_STORE: Keymap<String, u64, Bincode2, WithoutIter> =
+            KeymapBuilder::new(b"seeds").without_iter().build();
+
+pub fn save_seed(storage: &mut dyn Storage, key: String, item: &u64) -> StdResult<()> {
+    PLAYER_SEED_STORE.insert(storage, &key, item).map_err(|err| {
+        StdError::generic_err(format!("Failed to save seed: {}", err))
+    })
+}
+
+pub fn load_seed(storage: &dyn Storage, key: String) -> Option<u64> {
+    PLAYER_SEED_STORE.get(storage, &key)
+}
+
+#[cfg(test)]
+mod tests {
+use cosmwasm_std::{testing::MockStorage, StdError};
+
+use super::*;
+
+
+
+    #[test]
+    fn test_keymap() -> StdResult<()> {
+        let mut storage = MockStorage::new();
+        let key = 1u32;
+        let item = PokerTable {
+            game_state: GameState::GameStart,
+            player_cards: vec![(
+                "SDER".to_string(), 
+                PlayerCards { hole_cards: vec![] }
+            )],
+            community_cards: CommunityCards {
+                flop: vec![],
+                turn: 0,
+                river: 0,
+            },
+        };
+        TABLES_STORE.insert(&mut storage, &key, &item).map_err(|err| {
+            StdError::generic_err(format!("Failed to save table: {}", err))
+        })
+
     }
 }
-
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct PlayerCards {
     pub hole_cards: Vec<u8>, 
@@ -41,7 +86,7 @@ pub struct CommunityCards {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct PokerTable {
     pub game_state: GameState,
-    pub player_cards: HashMap<u8, PlayerCards>, 
+    pub player_cards: Vec<(String, PlayerCards)>,  // player's public address as a key
     pub community_cards: CommunityCards, 
 }
 

@@ -1,6 +1,8 @@
 use cosmwasm_std::StdError;
 use thiserror::Error;
 
+use crate::state::GameState;
+
 #[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
     #[error("{0}")]
@@ -10,6 +12,23 @@ pub enum ContractError {
     #[error("Unauthorized")]
     // issued when message sender != owner
     Unauthorized {},
+
+    #[error("Game state error in method {method} for table {table_id}: needed {needed:?}, but got {actual:?}")]
+    // issued when game state is invalid
+    GameStateError {
+        method: String,
+        table_id: u32,
+        needed: GameState,
+        actual: GameState,
+    },
+
+    #[error("Player {player} not found in table {table_id}")]
+    // issued when player is not found
+    PlayerNotFound { table_id: u32, player: String },
+
+    #[error("Table {table_id} not found")]
+    // issued when table is not found
+    TableNotFound { table_id: u32 },
 
     #[error("Custom Error val: {val:?}")]
     CustomError { val: String },

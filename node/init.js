@@ -4,12 +4,12 @@ import * as fs from "fs";
 // dotenv.config();
 
 // const wallet = new Wallet(process.env.MNEMONIC);
-const wallet = new Wallet("desk pigeon hammer sleep only mistake stool december offer patrol once vacant");
-const contract_wasm = fs.readFileSync("../optimized-wasm/rng_template.wasm.gz");
+const wallet = new Wallet("pigeon desk hammer sleep only mistake stool december offer patrol once vacant");
+const contract_wasm = fs.readFileSync("../optimized-wasm/poker_cards_distributor.wasm.gz");
 
 const secretjs = new SecretNetworkClient({
   chainId: "pulsar-3",
-  url: "https://api.pulsar3.scrttestnet.com",
+  url: "https://pulsar.lcd.secretnodes.com",
   wallet: wallet,
   walletAddress: wallet.address,
 });
