@@ -16,6 +16,7 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     StartGame {
         table_id: u32,
+        hand_ref: u32,
         players: Vec<String>,// (userId, public_key)
     },
     CommunityCards {
@@ -47,6 +48,8 @@ pub enum QueryWithPermit {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct HandResponse {
+    pub table_id: u32,
+    pub hand_ref: u32,
     pub cards: Vec<u8>,
     pub error: Option<String>,
 }
@@ -62,6 +65,7 @@ pub enum ResponsePayload {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct StartGameResponse {
     pub table_id: u32,
+    pub hand_ref: u32,
     pub players: Vec<String>,
     pub error: Option<String>,
 }
@@ -69,6 +73,7 @@ pub struct StartGameResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct CommunityCardsResponse {
     pub table_id: u32,
+    pub hand_ref: u32,
     pub game_state: GameState,
     pub community_cards: Vec<u8>,
     pub error: Option<String>,
@@ -77,6 +82,7 @@ pub struct CommunityCardsResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ShowdownResponse {
     pub table_id: u32,
+    pub hand_ref: u32,
     pub all_in_showdown: bool,
     pub players_cards: Vec<(String, Vec<u8>)>,
     pub community_cards: Option<Vec<u8>>,

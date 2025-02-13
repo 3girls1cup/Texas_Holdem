@@ -52,15 +52,13 @@ mod tests {
 use cosmwasm_std::{testing::MockStorage, StdError};
 
 use super::*;
-
-
-
     #[test]
     fn test_keymap() -> StdResult<()> {
         let mut storage = MockStorage::new();
         let key = 1u32;
         let item = PokerTable {
             game_state: GameState::PreFlop,
+            hand_ref: 1,
             player_cards: vec![(
                 "SDER".to_string(), 
                 PlayerCards { hole_cards: vec![] }
@@ -74,7 +72,6 @@ use super::*;
         TABLES_STORE.insert(&mut storage, &key, &item).map_err(|err| {
             StdError::generic_err(format!("Failed to save table: {}", err))
         })
-
     }
 }
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
@@ -92,6 +89,7 @@ pub struct CommunityCards {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct PokerTable {
     pub game_state: GameState,
+    pub hand_ref: u32,
     pub player_cards: Vec<(String, PlayerCards)>,  // player's public address as a key
     pub community_cards: CommunityCards, 
 }
@@ -159,4 +157,3 @@ impl Deck {
         Deck { cards }
     }
 }
-

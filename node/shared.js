@@ -97,7 +97,7 @@ export const execute = async (address, secretjs, info, msg) => {
         msg: msg,
         code_hash: info.contractCodeHash,
       },
-      { gasLimit: 40_000 }
+      { gasLimit: 50_000 }
     );
     console.log(flip_tx);
   } catch (error) {

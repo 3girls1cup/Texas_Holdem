@@ -41,7 +41,7 @@ pub fn execute(
     }
 
     match msg {
-        ExecuteMsg::StartGame {table_id,players } => start_game(deps, env, table_id, players),
+        ExecuteMsg::StartGame {table_id, hand_ref, players } => start_game(deps, env, table_id, hand_ref, players),
         ExecuteMsg::CommunityCards {table_id, game_state} => distribute_community_cards(deps, table_id, game_state),
         ExecuteMsg::Showdown {table_id, all_in_showdown, show_cards} => showdown(deps, env, table_id,all_in_showdown, show_cards),
     }
@@ -79,6 +79,7 @@ fn showdown(
 
     let response = ResponsePayload::Showdown(ShowdownResponse {
         table_id,
+        hand_ref: table.hand_ref,
         all_in_showdown,
         players_cards: player_hands,
         community_cards: handle_all_in_showdown(&table, all_in_showdown), // Fixed borrowing
@@ -134,6 +135,7 @@ fn distribute_community_cards(
     
     let response = ResponsePayload::CommunityCards(CommunityCardsResponse {
         table_id,
+        hand_ref: table.hand_ref,
         game_state: game_state_clone,
         community_cards: cards.unwrap(),
         error: None,
@@ -160,6 +162,7 @@ fn start_game(
     deps: DepsMut,
     env: Env,
     table_id: u32,
+    hand_ref: u32,
     players: Vec<String>,
 ) -> Result<Response, ContractError> {
 
@@ -208,6 +211,7 @@ fn start_game(
 
     let table = PokerTable {
         game_state: GameState::PreFlop,
+        hand_ref,
         player_cards: player_cards.iter().map(|(s, p)| (s.clone(), p.clone())).collect(),
         community_cards,
     };
@@ -216,6 +220,7 @@ fn start_game(
 
     let response = ResponsePayload::StartGame(StartGameResponse {
         table_id,
+        hand_ref,
         players,
         error: None,
     });
@@ -305,6 +310,8 @@ fn get_hand(deps: Deps, table_id: u32, pub_key: String) -> Option<HandResponse> 
 
     if table.is_none() {
         return Some(HandResponse {
+            table_id,
+            hand_ref: 0,
             cards: vec![],
             error: Some(format!("Table {} not found", table_id)),
         });
@@ -315,6 +322,8 @@ fn get_hand(deps: Deps, table_id: u32, pub_key: String) -> Option<HandResponse> 
 
     if player_cards.is_none() {
         return Some(HandResponse {
+            table_id,
+            hand_ref: table.hand_ref,
             cards: vec![],
             error: Some(format!("Player with address {} not found for table {}", pub_key, table_id)),
         });
@@ -323,6 +332,8 @@ fn get_hand(deps: Deps, table_id: u32, pub_key: String) -> Option<HandResponse> 
     let player_cards = player_cards.unwrap().1.clone();
 
     Some(HandResponse {
+        table_id,
+        hand_ref: table.hand_ref,
         cards: player_cards.hole_cards,
         error: None,
     })

@@ -2,7 +2,7 @@ import * as fs from "fs";
 
 let jsonRes;
 
-const path = "flip_tx.json";
+const path = "response.json";
 if (fs.existsSync(path)) {
   const data = fs.readFileSync(path, "utf8");
   jsonRes = JSON.parse(data);
@@ -21,7 +21,7 @@ for (let log of jsonRes.jsonLog) {
       {
         for (let attribute of event.attributes) {
             if (attribute.key === "response") {
-                const parsedRes = JSON.parse(attribute.value);
+                const parsedRes = attribute.value;
                 parsedResults.push(parsedRes);
                 break;
             }
