@@ -18,6 +18,7 @@ pub enum ExecuteMsg {
         table_id: u32,
         hand_ref: u32,
         players: Vec<String>,// (userId, public_key)
+        folded_win: bool,
     },
     CommunityCards {
         table_id: u32,
@@ -67,6 +68,7 @@ pub struct StartGameResponse {
     pub table_id: u32,
     pub hand_ref: u32,
     pub players: Vec<String>,
+    pub folded_win: bool,
     pub error: Option<String>,
 }
 

@@ -1,5 +1,6 @@
 import { SecretNetworkClient, Wallet } from "secretjs";
 import * as fs from "fs";
+import { client1} from "./shared.js";
 // import dotenv from "dotenv";
 // dotenv.config();
 
@@ -8,26 +9,13 @@ const wallet = new Wallet("pigeon desk hammer sleep only mistake stool december 
 const wallet2 = new Wallet("desk pigeon hammer sleep only mistake stool december offer patrol once vacant");
 const wallet3 = new Wallet("hammer desk pigeon sleep only mistake stool december offer patrol once vacant");
 const wallet4 = new Wallet("pigeon desk hammer sleep mistake only stool december offer patrol once vacant");
-const wallets = {
-   '1': {wallet: wallet, secretjs: createSecretJS(wallet)},
-    '2': {wallet: wallet2, secretjs: createSecretJS(wallet2)},
-    '3': {wallet: wallet3, secretjs: createSecretJS(wallet3)}
-}
 
-function createSecretJS(wallet) {
-    return new SecretNetworkClient({
-        chainId: "pulsar-3",
-        url: "https://api.pulsar3.scrttestnet.com",
-        wallet: wallet,
-        walletAddress: wallet.address,
-    });
-}
 
 let contractInfo = {
   contractAddress: "",
   contractCodeHash: "",
 }
-
+const s: import("secretjs/dist/extensions/snip1155/types/send.js").SendAction
 const contractInfoPath = "contractInfo.json";
 if (fs.existsSync(contractInfoPath)) {
   const contractInfoData = fs.readFileSync(contractInfoPath, "utf8");
@@ -82,7 +70,7 @@ let query_cards = async (secretjs, signature) => {
       code_hash: contractInfo.contractCodeHash,
       query: {
         with_permit: {
-          query: { get_player_cards: {table_id: 42} },
+          query: { get_player_cards: {table_id: 1} },
           permit: {
             params: {
               permit_name: permitName,
@@ -99,6 +87,10 @@ let query_cards = async (secretjs, signature) => {
 
   console.log(res);
 };
-let signature = await getSignature(wallet4);
+let signature = await getSignature(wallet);
 // console.log(wallet2.address);
-query_cards(createSecretJS(wallet4), signature);
+try {
+  query_cards(client1, signature);
+} catch (error) {
+  console.error("Error querying contract:", error);
+}

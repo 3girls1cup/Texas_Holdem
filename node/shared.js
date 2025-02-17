@@ -19,7 +19,7 @@ export const wallet2 = new Wallet("desk pigeon hammer sleep only mistake stool d
 export const wallet = new Wallet("pigeon desk hammer sleep only mistake stool december offer patrol once vacant");
 export const wallet3 = new Wallet("hammer desk pigeon sleep only mistake stool december offer patrol once vacant");
 
-const createSecretNetworkClient = (wallet) => {
+export const createSecretNetworkClient = (wallet) => {
   return new SecretNetworkClient({
     chainId: "pulsar-3",
     url: "https://pulsar.lcd.secretnodes.com",
@@ -34,7 +34,8 @@ export const client3 = createSecretNetworkClient(wallet3);
 
 export const start_game = {
     start_game: {
-      table_id: 42,
+      table_id: 1,
+      hand_ref: 1,
       players: [
         wallet.address,
         wallet2.address,
@@ -45,32 +46,32 @@ export const start_game = {
 
 export const flop = {
     community_cards: {
-      table_id: 42,
+      table_id: 1,
       game_state: "flop", // "flop" corresponds to 1
     },
   };  
 
   export const turn = {
     community_cards: {
-      table_id: 42,
+      table_id: 1,
       game_state: "turn", // "flop" corresponds to 1
     },
   };
 
   export const river = {
     community_cards: {
-      table_id: 42,
+      table_id: 1,
       game_state: "river", // "flop" corresponds to 1
     },
   };
 
   export const showdown_all_in = {
     showdown: {
-      table_id: 42,
+      table_id: 1,
       show_cards: [
-        wallet.address,
-        wallet2.address,
-        wallet3.address,
+        // wallet.address,
+        // wallet2.address,
+        // wallet3.address,
       ],
       all_in_showdown: true,
     }
@@ -78,7 +79,7 @@ export const flop = {
 
     export const showdown = {
         showdown: {
-        table_id: 42,
+        table_id: 1,
         show_cards: [
             wallet.address,
             wallet2.address,

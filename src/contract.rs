@@ -41,7 +41,7 @@ pub fn execute(
     }
 
     match msg {
-        ExecuteMsg::StartGame {table_id, hand_ref, players } => start_game(deps, env, table_id, hand_ref, players),
+        ExecuteMsg::StartGame {table_id, hand_ref, players, folded_win } => start_game(deps, env, table_id, hand_ref, players, folded_win),
         ExecuteMsg::CommunityCards {table_id, game_state} => distribute_community_cards(deps, table_id, game_state),
         ExecuteMsg::Showdown {table_id, all_in_showdown, show_cards} => showdown(deps, env, table_id,all_in_showdown, show_cards),
     }
@@ -164,12 +164,13 @@ fn start_game(
     table_id: u32,
     hand_ref: u32,
     players: Vec<String>,
+    folded_win: bool,
 ) -> Result<Response, ContractError> {
 
     let table = load_table(deps.storage, table_id);
 
     // If the table already exists, it means it hasn't ended yet
-    if !table.is_none() {
+    if !table.is_none() && !folded_win {
         let table = table.unwrap();
         return Err(ContractError::GameStateError { method: "start_game".to_string(), table_id, needed: None, actual: table.game_state });
     }
@@ -188,7 +189,6 @@ fn start_game(
     let mut deck = Deck::new();
 
     shuffle_deck(&mut deck, random_number);
-
     
     let mut player_cards: Vec<(String, PlayerCards)> = Vec::new();
     let mut deck_iter = deck.cards.iter();
@@ -222,6 +222,7 @@ fn start_game(
         table_id,
         hand_ref,
         players,
+        folded_win,
         error: None,
     });
 

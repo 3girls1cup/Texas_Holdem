@@ -1,7 +1,7 @@
 {
-  "height": 9074652,
-  "timestamp": "2025-02-13T04:08:09Z",
-  "transactionHash": "B1AD039E91640F11847DB9661194D5EA4BED7406EF043ABEE97E4F62A7CF8A57",
+  "height": 9146588,
+  "timestamp": "2025-02-17T17:51:52Z",
+  "transactionHash": "19B605F70233B83AC5BDE4B4AA2490D7BA1801127C1DAE05BC2B7AB41914E378",
   "code": 0,
   "codespace": "",
   "info": "",
@@ -12,48 +12,16 @@
         {
           "@type": "/secret.compute.v1beta1.MsgExecuteContract",
           "sender": "secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3",
-          "contract": "secret1lt0a480ydmu3ujrc8kulxfldhngd67rewvup8t",
+          "contract": "secret1wswst34nygj7h26fn92w8g5mjwa4aeu0gf2xae",
           "msg": {
             "start_game": {
-              "table_id": 42,
+              "table_id": 1,
+              "hand_ref": 1,
               "players": [
                 "secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3",
                 "secret1verdmwf2e0d930vulxru5fg3lm9y8r3xg5u7l6",
                 "secret1xywlcys0sgvvjf60mtvvu63np9sr9qj9msf947"
               ]
-            }
-          },
-          "callback_code_hash": "",
-          "sent_funds": [],
-          "callback_sig": null
-        },
-        {
-          "@type": "/secret.compute.v1beta1.MsgExecuteContract",
-          "sender": "secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3",
-          "contract": "secret1lt0a480ydmu3ujrc8kulxfldhngd67rewvup8t",
-          "msg": {
-            "community_cards": {
-              "table_id": 42,
-              "game_state": "flop"
-            }
-          },
-          "callback_code_hash": "",
-          "sent_funds": [],
-          "callback_sig": null
-        },
-        {
-          "@type": "/secret.compute.v1beta1.MsgExecuteContract",
-          "sender": "secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3",
-          "contract": "secret1lt0a480ydmu3ujrc8kulxfldhngd67rewvup8t",
-          "msg": {
-            "showdown": {
-              "table_id": 42,
-              "show_cards": [
-                "secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3",
-                "secret1verdmwf2e0d930vulxru5fg3lm9y8r3xg5u7l6",
-                "secret1xywlcys0sgvvjf60mtvvu63np9sr9qj9msf947"
-              ],
-              "all_in_showdown": true
             }
           },
           "callback_code_hash": "",
@@ -78,24 +46,24 @@
               "mode": "SIGN_MODE_DIRECT"
             }
           },
-          "sequence": "57"
+          "sequence": "116"
         }
       ],
       "fee": {
         "amount": [
           {
             "denom": "uscrt",
-            "amount": "12000"
+            "amount": "4000"
           }
         ],
-        "gas_limit": "120000",
+        "gas_limit": "40000",
         "payer": "",
         "granter": ""
       },
       "tip": null
     },
     "signatures": [
-      "+tvdQ+HzShm29fjxjW1ZRTi7fVKTXXmw23JLRgFuDmMT1Hg5OzyHxFUBc5xsNh92Q03XYFdV1tSqgI1PcrGYmg=="
+      "ZkqD+j9IVHSfNCPlxPQu6PAYvSKvXxtEnhpzwFtO9Y5/TeWUfvKiDqTI1d7aSDcLYjIM2syJPyVP63siiye7Rg=="
     ]
   },
   "rawLog": "",
@@ -120,7 +88,7 @@
             },
             {
               "key": "contract_address",
-              "value": "secret1lt0a480ydmu3ujrc8kulxfldhngd67rewvup8t"
+              "value": "secret1wswst34nygj7h26fn92w8g5mjwa4aeu0gf2xae"
             }
           ]
         },
@@ -129,7 +97,7 @@
           "attributes": [
             {
               "key": "contract_address",
-              "value": "secret1lt0a480ydmu3ujrc8kulxfldhngd67rewvup8t"
+              "value": "secret1wswst34nygj7h26fn92w8g5mjwa4aeu0gf2xae"
             }
           ]
         },
@@ -138,107 +106,11 @@
           "attributes": [
             {
               "key": "contract_address",
-              "value": "secret1lt0a480ydmu3ujrc8kulxfldhngd67rewvup8t"
+              "value": "secret1wswst34nygj7h26fn92w8g5mjwa4aeu0gf2xae"
             },
             {
               "key": "response",
-              "value": "{\"type\":\"start_game\",\"table_id\":42,\"players\":[\"secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3\",\"secret1verdmwf2e0d930vulxru5fg3lm9y8r3xg5u7l6\",\"secret1xywlcys0sgvvjf60mtvvu63np9sr9qj9msf947\"],\"error\":null}"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "msg_index": 1,
-      "events": [
-        {
-          "type": "message",
-          "attributes": [
-            {
-              "key": "action",
-              "value": "/secret.compute.v1beta1.MsgExecuteContract"
-            },
-            {
-              "key": "sender",
-              "value": "secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3"
-            },
-            {
-              "key": "module",
-              "value": "compute"
-            },
-            {
-              "key": "contract_address",
-              "value": "secret1lt0a480ydmu3ujrc8kulxfldhngd67rewvup8t"
-            }
-          ]
-        },
-        {
-          "type": "execute",
-          "attributes": [
-            {
-              "key": "contract_address",
-              "value": "secret1lt0a480ydmu3ujrc8kulxfldhngd67rewvup8t"
-            }
-          ]
-        },
-        {
-          "type": "wasm",
-          "attributes": [
-            {
-              "key": "contract_address",
-              "value": "secret1lt0a480ydmu3ujrc8kulxfldhngd67rewvup8t"
-            },
-            {
-              "key": "response",
-              "value": "{\"type\":\"community_cards\",\"table_id\":42,\"game_state\":\"flop\",\"community_cards\":[11,6,18],\"error\":null}"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "msg_index": 2,
-      "events": [
-        {
-          "type": "message",
-          "attributes": [
-            {
-              "key": "action",
-              "value": "/secret.compute.v1beta1.MsgExecuteContract"
-            },
-            {
-              "key": "sender",
-              "value": "secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3"
-            },
-            {
-              "key": "module",
-              "value": "compute"
-            },
-            {
-              "key": "contract_address",
-              "value": "secret1lt0a480ydmu3ujrc8kulxfldhngd67rewvup8t"
-            }
-          ]
-        },
-        {
-          "type": "execute",
-          "attributes": [
-            {
-              "key": "contract_address",
-              "value": "secret1lt0a480ydmu3ujrc8kulxfldhngd67rewvup8t"
-            }
-          ]
-        },
-        {
-          "type": "wasm",
-          "attributes": [
-            {
-              "key": "contract_address",
-              "value": "secret1lt0a480ydmu3ujrc8kulxfldhngd67rewvup8t"
-            },
-            {
-              "key": "response",
-              "value": "{\"type\":\"showdown\",\"table_id\":42,\"all_in_showdown\":true,\"players_cards\":[[\"secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3\",[42,58]],[\"secret1verdmwf2e0d930vulxru5fg3lm9y8r3xg5u7l6\",[54,39]],[\"secret1xywlcys0sgvvjf60mtvvu63np9sr9qj9msf947\",[17,9]]],\"community_cards\":[1,8],\"error\":null}"
+              "value": "{\"type\":\"start_game\",\"table_id\":1,\"hand_ref\":1,\"players\":[\"secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3\",\"secret1verdmwf2e0d930vulxru5fg3lm9y8r3xg5u7l6\",\"secret1xywlcys0sgvvjf60mtvvu63np9sr9qj9msf947\"],\"error\":null}"
             }
           ]
         }
@@ -268,109 +140,25 @@
       "msg": 0,
       "type": "message",
       "key": "contract_address",
-      "value": "secret1lt0a480ydmu3ujrc8kulxfldhngd67rewvup8t"
+      "value": "secret1wswst34nygj7h26fn92w8g5mjwa4aeu0gf2xae"
     },
     {
       "msg": 0,
       "type": "execute",
       "key": "contract_address",
-      "value": "secret1lt0a480ydmu3ujrc8kulxfldhngd67rewvup8t"
+      "value": "secret1wswst34nygj7h26fn92w8g5mjwa4aeu0gf2xae"
     },
     {
       "msg": 0,
       "type": "wasm",
       "key": "contract_address",
-      "value": "secret1lt0a480ydmu3ujrc8kulxfldhngd67rewvup8t"
+      "value": "secret1wswst34nygj7h26fn92w8g5mjwa4aeu0gf2xae"
     },
     {
       "msg": 0,
       "type": "wasm",
       "key": "response",
-      "value": "{\"type\":\"start_game\",\"table_id\":42,\"players\":[\"secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3\",\"secret1verdmwf2e0d930vulxru5fg3lm9y8r3xg5u7l6\",\"secret1xywlcys0sgvvjf60mtvvu63np9sr9qj9msf947\"],\"error\":null}"
-    },
-    {
-      "msg": 1,
-      "type": "message",
-      "key": "action",
-      "value": "/secret.compute.v1beta1.MsgExecuteContract"
-    },
-    {
-      "msg": 1,
-      "type": "message",
-      "key": "sender",
-      "value": "secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3"
-    },
-    {
-      "msg": 1,
-      "type": "message",
-      "key": "module",
-      "value": "compute"
-    },
-    {
-      "msg": 1,
-      "type": "message",
-      "key": "contract_address",
-      "value": "secret1lt0a480ydmu3ujrc8kulxfldhngd67rewvup8t"
-    },
-    {
-      "msg": 1,
-      "type": "execute",
-      "key": "contract_address",
-      "value": "secret1lt0a480ydmu3ujrc8kulxfldhngd67rewvup8t"
-    },
-    {
-      "msg": 1,
-      "type": "wasm",
-      "key": "contract_address",
-      "value": "secret1lt0a480ydmu3ujrc8kulxfldhngd67rewvup8t"
-    },
-    {
-      "msg": 1,
-      "type": "wasm",
-      "key": "response",
-      "value": "{\"type\":\"community_cards\",\"table_id\":42,\"game_state\":\"flop\",\"community_cards\":[11,6,18],\"error\":null}"
-    },
-    {
-      "msg": 2,
-      "type": "message",
-      "key": "action",
-      "value": "/secret.compute.v1beta1.MsgExecuteContract"
-    },
-    {
-      "msg": 2,
-      "type": "message",
-      "key": "sender",
-      "value": "secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3"
-    },
-    {
-      "msg": 2,
-      "type": "message",
-      "key": "module",
-      "value": "compute"
-    },
-    {
-      "msg": 2,
-      "type": "message",
-      "key": "contract_address",
-      "value": "secret1lt0a480ydmu3ujrc8kulxfldhngd67rewvup8t"
-    },
-    {
-      "msg": 2,
-      "type": "execute",
-      "key": "contract_address",
-      "value": "secret1lt0a480ydmu3ujrc8kulxfldhngd67rewvup8t"
-    },
-    {
-      "msg": 2,
-      "type": "wasm",
-      "key": "contract_address",
-      "value": "secret1lt0a480ydmu3ujrc8kulxfldhngd67rewvup8t"
-    },
-    {
-      "msg": 2,
-      "type": "wasm",
-      "key": "response",
-      "value": "{\"type\":\"showdown\",\"table_id\":42,\"all_in_showdown\":true,\"players_cards\":[[\"secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3\",[42,58]],[\"secret1verdmwf2e0d930vulxru5fg3lm9y8r3xg5u7l6\",[54,39]],[\"secret1xywlcys0sgvvjf60mtvvu63np9sr9qj9msf947\",[17,9]]],\"community_cards\":[1,8],\"error\":null}"
+      "value": "{\"type\":\"start_game\",\"table_id\":1,\"hand_ref\":1,\"players\":[\"secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3\",\"secret1verdmwf2e0d930vulxru5fg3lm9y8r3xg5u7l6\",\"secret1xywlcys0sgvvjf60mtvvu63np9sr9qj9msf947\"],\"error\":null}"
     }
   ],
   "events": [
@@ -384,7 +172,7 @@
         },
         {
           "key": "amount",
-          "value": "12000uscrt",
+          "value": "4000uscrt",
           "index": true
         }
       ]
@@ -399,7 +187,7 @@
         },
         {
           "key": "amount",
-          "value": "12000uscrt",
+          "value": "4000uscrt",
           "index": true
         }
       ]
@@ -419,7 +207,7 @@
         },
         {
           "key": "amount",
-          "value": "12000uscrt",
+          "value": "4000uscrt",
           "index": true
         }
       ]
@@ -439,7 +227,7 @@
       "attributes": [
         {
           "key": "fee",
-          "value": "12000uscrt",
+          "value": "4000uscrt",
           "index": true
         },
         {
@@ -454,7 +242,7 @@
       "attributes": [
         {
           "key": "acc_seq",
-          "value": "secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3/57",
+          "value": "secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3/116",
           "index": true
         }
       ]
@@ -464,7 +252,7 @@
       "attributes": [
         {
           "key": "signature",
-          "value": "+tvdQ+HzShm29fjxjW1ZRTi7fVKTXXmw23JLRgFuDmMT1Hg5OzyHxFUBc5xsNh92Q03XYFdV1tSqgI1PcrGYmg==",
+          "value": "ZkqD+j9IVHSfNCPlxPQu6PAYvSKvXxtEnhpzwFtO9Y5/TeWUfvKiDqTI1d7aSDcLYjIM2syJPyVP63siiye7Rg==",
           "index": true
         }
       ]
@@ -504,7 +292,7 @@
         },
         {
           "key": "contract_address",
-          "value": "secret1lt0a480ydmu3ujrc8kulxfldhngd67rewvup8t",
+          "value": "secret1wswst34nygj7h26fn92w8g5mjwa4aeu0gf2xae",
           "index": true
         },
         {
@@ -519,7 +307,7 @@
       "attributes": [
         {
           "key": "contract_address",
-          "value": "secret1lt0a480ydmu3ujrc8kulxfldhngd67rewvup8t",
+          "value": "secret1wswst34nygj7h26fn92w8g5mjwa4aeu0gf2xae",
           "index": true
         },
         {
@@ -534,177 +322,17 @@
       "attributes": [
         {
           "key": "contract_address",
-          "value": "secret1lt0a480ydmu3ujrc8kulxfldhngd67rewvup8t",
+          "value": "secret1wswst34nygj7h26fn92w8g5mjwa4aeu0gf2xae",
           "index": true
         },
         {
           "key": "response",
-          "value": "{\"type\":\"start_game\",\"table_id\":42,\"players\":[\"secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3\",\"secret1verdmwf2e0d930vulxru5fg3lm9y8r3xg5u7l6\",\"secret1xywlcys0sgvvjf60mtvvu63np9sr9qj9msf947\"],\"error\":null}",
+          "value": "{\"type\":\"start_game\",\"table_id\":1,\"hand_ref\":1,\"players\":[\"secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3\",\"secret1verdmwf2e0d930vulxru5fg3lm9y8r3xg5u7l6\",\"secret1xywlcys0sgvvjf60mtvvu63np9sr9qj9msf947\"],\"error\":null}",
           "index": true
         },
         {
           "key": "msg_index",
           "value": "0",
-          "index": true
-        }
-      ]
-    },
-    {
-      "type": "message",
-      "attributes": [
-        {
-          "key": "action",
-          "value": "/secret.compute.v1beta1.MsgExecuteContract",
-          "index": true
-        },
-        {
-          "key": "sender",
-          "value": "secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3",
-          "index": true
-        },
-        {
-          "key": "msg_index",
-          "value": "1",
-          "index": true
-        }
-      ]
-    },
-    {
-      "type": "message",
-      "attributes": [
-        {
-          "key": "module",
-          "value": "compute",
-          "index": true
-        },
-        {
-          "key": "sender",
-          "value": "secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3",
-          "index": true
-        },
-        {
-          "key": "contract_address",
-          "value": "secret1lt0a480ydmu3ujrc8kulxfldhngd67rewvup8t",
-          "index": true
-        },
-        {
-          "key": "msg_index",
-          "value": "1",
-          "index": true
-        }
-      ]
-    },
-    {
-      "type": "execute",
-      "attributes": [
-        {
-          "key": "contract_address",
-          "value": "secret1lt0a480ydmu3ujrc8kulxfldhngd67rewvup8t",
-          "index": true
-        },
-        {
-          "key": "msg_index",
-          "value": "1",
-          "index": true
-        }
-      ]
-    },
-    {
-      "type": "wasm",
-      "attributes": [
-        {
-          "key": "contract_address",
-          "value": "secret1lt0a480ydmu3ujrc8kulxfldhngd67rewvup8t",
-          "index": true
-        },
-        {
-          "key": "response",
-          "value": "{\"type\":\"community_cards\",\"table_id\":42,\"game_state\":\"flop\",\"community_cards\":[11,6,18],\"error\":null}",
-          "index": true
-        },
-        {
-          "key": "msg_index",
-          "value": "1",
-          "index": true
-        }
-      ]
-    },
-    {
-      "type": "message",
-      "attributes": [
-        {
-          "key": "action",
-          "value": "/secret.compute.v1beta1.MsgExecuteContract",
-          "index": true
-        },
-        {
-          "key": "sender",
-          "value": "secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3",
-          "index": true
-        },
-        {
-          "key": "msg_index",
-          "value": "2",
-          "index": true
-        }
-      ]
-    },
-    {
-      "type": "message",
-      "attributes": [
-        {
-          "key": "module",
-          "value": "compute",
-          "index": true
-        },
-        {
-          "key": "sender",
-          "value": "secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3",
-          "index": true
-        },
-        {
-          "key": "contract_address",
-          "value": "secret1lt0a480ydmu3ujrc8kulxfldhngd67rewvup8t",
-          "index": true
-        },
-        {
-          "key": "msg_index",
-          "value": "2",
-          "index": true
-        }
-      ]
-    },
-    {
-      "type": "execute",
-      "attributes": [
-        {
-          "key": "contract_address",
-          "value": "secret1lt0a480ydmu3ujrc8kulxfldhngd67rewvup8t",
-          "index": true
-        },
-        {
-          "key": "msg_index",
-          "value": "2",
-          "index": true
-        }
-      ]
-    },
-    {
-      "type": "wasm",
-      "attributes": [
-        {
-          "key": "contract_address",
-          "value": "secret1lt0a480ydmu3ujrc8kulxfldhngd67rewvup8t",
-          "index": true
-        },
-        {
-          "key": "response",
-          "value": "{\"type\":\"showdown\",\"table_id\":42,\"all_in_showdown\":true,\"players_cards\":[[\"secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3\",[42,58]],[\"secret1verdmwf2e0d930vulxru5fg3lm9y8r3xg5u7l6\",[54,39]],[\"secret1xywlcys0sgvvjf60mtvvu63np9sr9qj9msf947\",[17,9]]],\"community_cards\":[1,8],\"error\":null}",
-          "index": true
-        },
-        {
-          "key": "msg_index",
-          "value": "2",
           "index": true
         }
       ]
@@ -714,17 +342,9 @@
     {
       "type": "Buffer",
       "data": []
-    },
-    {
-      "type": "Buffer",
-      "data": []
-    },
-    {
-      "type": "Buffer",
-      "data": []
     }
   ],
-  "gasUsed": 91798,
-  "gasWanted": 120000,
+  "gasUsed": 38098,
+  "gasWanted": 40000,
   "ibcResponses": []
 }
