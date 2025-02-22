@@ -4,8 +4,12 @@ use secret_toolkit_storage::{Item, Keymap, KeymapBuilder, WithoutIter};
 use serde::{Deserialize, Serialize};
 use cosmwasm_std::{Addr, StdError, StdResult, Storage};
 
+use crate::contract::encrypt_cards;
+
 
 pub const PREFIX_REVOKED_PERMITS: &str = "revoked_permits";
+
+pub static COUNTER_KEY: Item<u128> = Item::new(b"counter");
 
 pub static CONFIG_KEY: Item<Config> = Item::new(b"config");
 
@@ -34,19 +38,6 @@ pub fn delete_table(storage: &mut dyn Storage, key: u32) -> StdResult<()> {
     })
 }
 
-pub static PLAYER_SEED_STORE: Keymap<String, u64, Bincode2, WithoutIter> =
-            KeymapBuilder::new(b"seeds").without_iter().build();
-
-pub fn save_seed(storage: &mut dyn Storage, key: String, item: &u64) -> StdResult<()> {
-    PLAYER_SEED_STORE.insert(storage, &key, item).map_err(|err| {
-        StdError::generic_err(format!("Failed to save seed: {}", err))
-    })
-}
-
-pub fn load_seed(storage: &dyn Storage, key: String) -> Option<u64> {
-    PLAYER_SEED_STORE.get(storage, &key)
-}
-
 #[cfg(test)]
 mod tests {
 use cosmwasm_std::{testing::MockStorage, StdError};
@@ -56,17 +47,30 @@ use super::*;
     fn test_keymap() -> StdResult<()> {
         let mut storage = MockStorage::new();
         let key = 1u32;
+        let community_cards = CommunityCards {
+            flop: vec![],
+            turn: 0,
+            river: 0,
+        };
+
         let item = PokerTable {
             game_state: GameState::PreFlop,
             hand_ref: 1,
-            player_cards: vec![(
-                "SDER".to_string(), 
-                PlayerCards { hole_cards: vec![] }
-            )],
-            community_cards: CommunityCards {
-                flop: vec![],
-                turn: 0,
-                river: 0,
+            players: vec![Player {
+                public_key: "public_key".to_string(),
+                encrypted_hand: PlayerCards { hole_cards: vec![] },
+                decrypted_hand: PlayerCards { hole_cards: vec![] },
+                hand_seed: 0,
+                flop_seed_share: 0,
+                turn_seed_share: 0,
+                river_seed_share: 0,
+            }],
+            community_cards: CommunityCardsWrapper {
+                encrypted: community_cards.clone(),
+                decrypted: community_cards.clone(),
+                flop_secret: 0,
+                turn_secret: 0,
+                river_secret: 0,
             },
         };
         TABLES_STORE.insert(&mut storage, &key, &item).map_err(|err| {
@@ -86,13 +90,57 @@ pub struct CommunityCards {
     pub river: u8, 
 }
 
+impl CommunityCards {
+    pub fn encrypt(&self, flop_secret: u64, turn_secret: u64, river_secret: u64) -> CommunityCards {
+        CommunityCards {
+            flop: encrypt_cards(flop_secret, self.flop.clone()),
+            turn: encrypt_cards(turn_secret, self.turn),
+            river: encrypt_cards(river_secret, self.river),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct PokerTable {
     pub game_state: GameState,
     pub hand_ref: u32,
-    pub player_cards: Vec<(String, PlayerCards)>,  // player's public address as a key
-    pub community_cards: CommunityCards, 
+    pub players: Vec<Player>,
+    pub community_cards: CommunityCardsWrapper,
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+pub struct CommunityCardsWrapper {
+    pub encrypted: CommunityCards,
+    pub decrypted: CommunityCards,
+    pub flop_secret: u64,
+    pub turn_secret: u64,
+    pub river_secret: u64,
+}
+
+impl CommunityCardsWrapper {
+    pub fn new(community_cards: CommunityCards, flop_secret: u64, turn_secret: u64, river_secret: u64) -> Self {
+        CommunityCardsWrapper {
+            encrypted: community_cards.encrypt(flop_secret, turn_secret, river_secret),
+            decrypted: community_cards,
+            flop_secret,
+            turn_secret,
+            river_secret,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+pub struct Player {
+    pub public_key: String,
+    pub encrypted_hand: PlayerCards,
+    pub decrypted_hand: PlayerCards,
+    pub hand_seed: u64,
+    pub flop_seed_share: u64,
+    pub turn_seed_share: u64,
+    pub river_seed_share: u64,
+}
+
+
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]

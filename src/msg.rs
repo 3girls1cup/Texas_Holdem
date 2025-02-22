@@ -29,7 +29,8 @@ pub enum ExecuteMsg {
         all_in_showdown: bool,
         show_cards: Vec<String>, // userId of players whos cards are shown
     },
-    // Input { msg: PrivContractHandleMsg },
+    Random {
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -39,20 +40,31 @@ pub enum QueryMsg {
         permit: Permit,
         query: QueryWithPermit,
     },
+    CommunityCards { table_id: u32, game_state: GameState, secret_key: u64 },
+    Showdown { 
+        table_id: u32, 
+        flop_secret: Option<u64>,
+        turn_secret: Option<u64>,
+        river_secret: Option<u64>,
+        players_secrets: Vec<u64>,
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryWithPermit {
-    GetPlayerCards { table_id: u32 },
+    PlayerPrivateData { table_id: u32 },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct HandResponse {
+pub struct PlayerDataResponse {
     pub table_id: u32,
     pub hand_ref: u32,
-    pub cards: Vec<u8>,
-    pub error: Option<String>,
+    pub hand: Vec<u8>,
+    pub hand_seed: u64,
+    pub flop_secret: u64,
+    pub turn_secret: u64,
+    pub river_secret: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -69,7 +81,6 @@ pub struct StartGameResponse {
     pub hand_ref: u32,
     pub players: Vec<String>,
     pub folded_win: bool,
-    pub error: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -78,7 +89,6 @@ pub struct CommunityCardsResponse {
     pub hand_ref: u32,
     pub game_state: GameState,
     pub community_cards: Vec<u8>,
-    pub error: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -88,5 +98,4 @@ pub struct ShowdownResponse {
     pub all_in_showdown: bool,
     pub players_cards: Vec<(String, Vec<u8>)>,
     pub community_cards: Option<Vec<u8>>,
-    pub error: Option<String>,
 }
