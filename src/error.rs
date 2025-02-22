@@ -1,7 +1,4 @@
-use core::error;
-
 use cosmwasm_std::StdError;
-use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -17,13 +14,12 @@ pub enum ContractError {
     // issued when message sender != owner
     Unauthorized {},
 
-    #[error("Game state error in method {method} for table {table_id}: needed {needed:?}, but got {actual:?}")]
+    #[error("Game state error in method {method} for table {table_id}: got {game_state:?}")]
     // issued when game state is invalid
     GameStateError {
         method: String,
         table_id: u32,
-        needed: Option<GameState>,
-        actual: GameState,
+        game_state: Option<GameState>,
     },
 
     #[error("Player {player} not found in table {table_id}")]
@@ -40,7 +36,7 @@ pub enum ContractError {
     // Look at https://docs.rs/thiserror/1.0.21/thiserror/ for details.
 }
 
-#[derive(Error, Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Error, Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum QueryError {
 
     #[error("Player {player} not found in table {table_id}")]
@@ -58,4 +54,8 @@ pub enum QueryError {
     #[error("Invalid viewing secret {key}")]
     // issued when viewing key is invalid
     InvalidViewingKey { key: u64 },
+
+    #[error("Secret doesn't exist: {val:?}")]
+    // issued when secret is not found
+    SecretNotFound { val: String },
 }

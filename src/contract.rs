@@ -5,16 +5,16 @@ use sha2::{Digest, Sha256};
 use cosmwasm_std::{
     entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult
 };
+use uuid::Uuid;
 use crate::error::{ContractError, QueryError};
-use crate::msg::{CommunityCardsResponse, ExecuteMsg, InstantiateMsg, PlayerDataResponse, QueryMsg, QueryWithPermit, ResponsePayload, ShowdownResponse, StartGameResponse};
-use crate::state::{ delete_table, load_table, save_table, CommunityCards, CommunityCardsWrapper, Config, Deck, GameState, Player, PlayerCards, PokerTable, CONFIG_KEY, COUNTER_KEY, PREFIX_REVOKED_PERMITS};
+use crate::msg::{CommunityCardsResponse, ExecuteMsg, LastHandLogResponse, QueryMsg, QueryWithPermit, ResponsePayload, ShowdownPlayer, ShowdownResponse, StartGamePlayer, StartGameResponse};
+use crate::state::{ delete_table, load_table, save_table, Card, CommunityCards, Config, Deck, Flop, GameState, Player, PokerTable, River, Turn, CONFIG_KEY, COUNTER_KEY, PREFIX_REVOKED_PERMITS};
 
 #[entry_point]
 pub fn instantiate(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    _msg: InstantiateMsg,
 ) -> Result<Response, StdError> {
     let contract_address = env.contract.address.clone();
     let config = Config {
@@ -54,9 +54,9 @@ pub fn execute(
     }
 
     match msg {
-        ExecuteMsg::StartGame {table_id, hand_ref, players, folded_win } => start_game(deps, env, table_id, hand_ref, players, folded_win),
-        ExecuteMsg::CommunityCards {table_id, game_state} => distribute_community_cards(deps, table_id, game_state),
-        ExecuteMsg::Showdown {table_id, all_in_showdown, show_cards} => showdown(deps, env, table_id,all_in_showdown, show_cards),
+        ExecuteMsg::StartGame {table_id, hand_ref, players , prev_hand_showdown_players} => start_game(deps, env, table_id, hand_ref, players, prev_hand_showdown_players),
+        ExecuteMsg::CommunityCards {table_id, game_state} => distribute_community_cards(deps, env, table_id, game_state),
+        ExecuteMsg::Showdown {table_id, game_state, show_cards} => showdown(deps, env, table_id, game_state, show_cards),
         ExecuteMsg::Random {} => random(deps, env),
     }
 }
@@ -78,29 +78,23 @@ fn random(
     Ok(Response::new().add_attribute_plaintext("response", format!("{:?}", random_shares)))
 }
 
-
-
 fn showdown(    
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     table_id: u32,
-    all_in_showdown: bool,
+    game_state: GameState,
     show_cards: Vec<String>,
 ) -> Result<Response, ContractError> {
-    let table = load_table(deps.storage, table_id)
+    let mut table = load_table(deps.storage, table_id)
         .ok_or_else(|| ContractError::TableNotFound { table_id })?;
 
-    if !all_in_showdown && table.game_state != GameState::River {
-        return Err(ContractError::GameStateError { method: "showdown".to_string(), table_id, needed: Some(GameState::River), actual: table.game_state });
-    }
-
-    let mut player_hands: Vec<(String, Vec<u8>)> = Vec::new();
+    let mut player_hands: Vec<(Uuid, Vec<Card>)> = Vec::new();
 
     for pub_key in show_cards.iter() {
         let players = table.players.iter().find(|player| &player.public_key == pub_key);
     
         if let Some(player) = players {
-            player_hands.push((player.public_key.clone(), player.decrypted_hand.hole_cards.clone()));
+            player_hands.push((player.player_id.clone(), player.hand.clone()));
         } else {
             return Err(ContractError::PlayerNotFound { table_id, player: pub_key.clone() });
         }
@@ -111,10 +105,13 @@ fn showdown(
     let response = ResponsePayload::Showdown(ShowdownResponse {
         table_id,
         hand_ref: table.hand_ref,
-        all_in_showdown,
         players_cards: player_hands,
-        community_cards: handle_all_in_showdown(&table, all_in_showdown), // Fixed borrowing
+        community_cards: handle_all_in_showdown(&table.community_cards, game_state),
     });
+
+    // Log the showdown retrieval time
+    table.showdown_retrieved_at = Some(env.block.time);
+    save_table(deps.storage, table_id, &table)?;
 
     let json_response = serde_json_wasm::to_string(&response)
         .map_err(|e| cosmwasm_std::StdError::generic_err(format!("Serialization error: {}", e)))?;
@@ -122,51 +119,52 @@ fn showdown(
     Ok(Response::new().add_attribute_plaintext("response", json_response))
 }
 
-fn handle_all_in_showdown(table: &PokerTable, all_in_showdown: bool) -> Option<Vec<u8>> {
-    if all_in_showdown {
-        match table.game_state {
-            GameState::PreFlop => {
-                let mut cards = table.community_cards.decrypted.flop.clone();
-                cards.push(table.community_cards.decrypted.turn);
-                cards.push(table.community_cards.decrypted.river);
-                Some(cards)
-            }
-            GameState::Flop => Some(vec![table.community_cards.decrypted.turn, table.community_cards.decrypted.river]),
-            GameState::Turn => Some(vec![table.community_cards.decrypted.river]),
-            _ => None,
+fn handle_all_in_showdown(community_cards: &CommunityCards, game_state: GameState) -> Option<Vec<Card>> {
+    match game_state {
+        GameState::PreFlop => {
+            let mut cards = community_cards.flop.cards.clone();
+            cards.push(community_cards.turn.card.clone());
+            cards.push(community_cards.river.card.clone());
+            Some(cards)
         }
-    } else {
-        None
+        GameState::Flop => Some(vec![community_cards.turn.card.clone(), community_cards.river.card.clone()]),
+        GameState::Turn => Some(vec![community_cards.river.card.clone()]),
+        _ => return None,
     }
 }
 
 fn distribute_community_cards(
     deps: DepsMut,
+    env: Env,
     table_id: u32,
     game_state: GameState,
 ) -> Result<Response, ContractError> {
 
-    let table = load_table(deps.storage, table_id)
+    let mut table = load_table(deps.storage, table_id)
         .ok_or_else(|| ContractError::TableNotFound { table_id })?;
-
-    let cards = match (table.game_state.clone(), &game_state) {
-        (GameState::PreFlop, GameState::Flop) => Some(table.community_cards.decrypted.flop.clone()), 
-        (GameState::Flop, GameState::Turn) => Some(vec![table.community_cards.decrypted.turn]), 
-        (GameState::Turn, GameState::River) => Some(vec![table.community_cards.decrypted.river]), 
-        _ => return Err(ContractError::GameStateError { method: "distribute_community_cards".to_string(), table_id, needed: get_needed_game_state(game_state), actual: table.game_state.clone() }),
+    let cards = match game_state {
+        GameState::Flop => {
+            table.community_cards.flop.retrieved_at = Some(env.block.time);
+            Some(table.community_cards.flop.cards.clone())
+        }, 
+        GameState::Turn => {
+            table.community_cards.turn.retrieved_at = Some(env.block.time);
+            Some(vec![table.community_cards.turn.card.clone()])
+        }, 
+        GameState::River=> {
+            table.community_cards.river.retrieved_at = Some(env.block.time);
+            Some(vec![table.community_cards.river.card.clone()])
+        }, 
+        _ => return Err(ContractError::GameStateError { method: "distribute_community_cards".to_string(), table_id, game_state: Some(game_state) }),
     };
 
-    
-    let mut updated_table = table.clone();
-    let game_state_clone = game_state.clone();
-    updated_table.game_state = game_state;
-
-    save_table(deps.storage, table_id, &updated_table)?;
+    // Log the retrieved_at time
+    save_table(deps.storage, table_id, &table)?;
     
     let response = ResponsePayload::CommunityCards(CommunityCardsResponse {
         table_id,
         hand_ref: table.hand_ref,
-        game_state: game_state_clone,
+        game_state: game_state,
         community_cards: cards.unwrap(),
     });
 
@@ -177,39 +175,45 @@ fn distribute_community_cards(
         .add_attribute_plaintext("response", json_response))
 }
 
-
-fn get_needed_game_state(requested_game_state: GameState) -> Option<GameState> {
-    match requested_game_state {
-        GameState::Flop => Some(GameState::PreFlop),
-        GameState::Turn => Some(GameState::Flop),
-        GameState::River => Some(GameState::Turn),
-        _ => None,
-    }
-}
-
 fn start_game(
     deps: DepsMut,
     env: Env,
     table_id: u32,
     hand_ref: u32,
-    players_pubkeys: Vec<String>,
-    folded_win: bool,
+    players_info: Vec<StartGamePlayer>,
+    prev_hand_showdown_players: Vec<Uuid>,
 ) -> Result<Response, ContractError> {
 
     let table = load_table(deps.storage, table_id);
 
-    // If the table already exists, it means it hasn't ended yet
-    if !table.is_none() && !folded_win {
+    let previous_hand_log = if table.is_some() {
         let table = table.unwrap();
-        return Err(ContractError::GameStateError { method: "start_game".to_string(), table_id, needed: None, actual: table.game_state });
-    }
+        
+        Some(LastHandLogResponse {
+            showdown_players: prev_hand_showdown_players.iter().map(|player_id| {
+                let player = table.players.iter().find(|player| &player.player_id == player_id).unwrap();
+                ShowdownPlayer {
+                    username: player.username.clone(),
+                    hand: player.hand.iter().map(|card| card.to_string()).collect(),
+                }
+            }).collect(),
+            community_cards: [table.community_cards.flop.cards.iter().map(|card| card.to_string()).collect(), vec![table.community_cards.turn.card.to_string()], vec![table.community_cards.river.card.to_string()]].concat(),
+            flop_retrieved_at: table.community_cards.flop.retrieved_at,
+            turn_retrieved_at: table.community_cards.turn.retrieved_at,
+            river_retrieved_at: table.community_cards.river.retrieved_at,
+            showdown_retrieved_at: table.showdown_retrieved_at,
+        })
+    } else {
+        None
+    };
 
-    if players_pubkeys.len() < 2 || players_pubkeys.len() > 9 {
+    if players_info.len() < 2 || players_info.len() > 9 {
         return Err(ContractError::from(cosmwasm_std::StdError::generic_err("Number of players must be between 2 and 9")));
     }
 
-    let unique_players: HashSet<String> = players_pubkeys.iter().map(|addr| addr.clone()).collect();
-    if unique_players.len() != players_pubkeys.len() {
+    let unique_players: HashSet<String> = players_info.iter().map(|player| player.public_key.clone()).collect();
+    
+    if unique_players.len() != players_info.len() {
         return Err(ContractError::from(cosmwasm_std::StdError::generic_err("Duplicated public keys")));
     }
 
@@ -221,55 +225,63 @@ fn start_game(
 
     shuffle_deck(&mut deck, random_number);
     
-    let mut player_cards: Vec<(String, PlayerCards)> = Vec::new();
+    let mut player_cards: Vec<(String, Vec<Card>)> = Vec::new();
     let mut deck_iter = deck.cards.iter();
     
-    for pub_key in players_pubkeys.clone() {
-        let hole_cards = vec![deck_iter.next().unwrap(), deck_iter.next().unwrap()];
-        player_cards.push((pub_key, PlayerCards { hole_cards: hole_cards.iter().map(|card| card.to_bytes()).collect() }));
+    for i in 0..players_info.len() {
+        let cards = vec![deck_iter.next().unwrap().clone(), deck_iter.next().unwrap().clone()];
+        player_cards.push((players_info[i].public_key.clone(), cards.clone()));
     }
-    
-    let flop = vec![deck_iter.next().unwrap(), deck_iter.next().unwrap(), deck_iter.next().unwrap()];
-    let turn = deck_iter.next().unwrap();
-    let river = deck_iter.next().unwrap();
-
-
-    let community_cards = CommunityCards {
-        flop: flop.iter().map(|card| card.to_bytes()).collect(),
-        turn: turn.to_bytes(),
-        river: river.to_bytes(),
-    };
 
     let mut community_cards_secrets = Vec::new();
 
     for _ in 0..3 {
         let secret = generate_random_number(&env, &mut counter).unwrap();
-        let secret_shares = additive_secret_sharing(env.clone(), players_pubkeys.len(), secret, &mut counter);
+        let secret_shares = additive_secret_sharing(env.clone(), players_info.len(), secret, &mut counter);
         community_cards_secrets.push((secret, secret_shares));
     }
 
-    let community_cards_wrapper = CommunityCardsWrapper::new(community_cards, community_cards_secrets[0].0, community_cards_secrets[1].0, community_cards_secrets[2].0);
+    let community_cards = CommunityCards {
+        flop: Flop {
+            cards: vec![deck_iter.next().unwrap().clone(), deck_iter.next().unwrap().clone(), deck_iter.next().unwrap().clone()],
+            secret: community_cards_secrets[0].0,
+            retrieved_at: None,
+        },
+        turn: Turn {
+            card: deck_iter.next().unwrap().clone(),
+            secret: community_cards_secrets[1].0,
+            retrieved_at: None,
+
+        },
+        river: River {
+            card: deck_iter.next().unwrap().clone(),
+            secret: community_cards_secrets[2].0,
+            retrieved_at: None,
+        },
+    };
+
     let mut players = Vec::new();
 
     for (i, (pub_key, cards)) in player_cards.iter().enumerate() {
-        let encrypted_cards = encrypt_cards(random_number, cards.hole_cards.clone());
         let player = Player {
+            username: players_info[i].username.clone(),
+            player_id: players_info[i].player_id,
             public_key: pub_key.clone(),
-            encrypted_hand: PlayerCards { hole_cards: encrypted_cards },
-            decrypted_hand: PlayerCards { hole_cards: cards.hole_cards.clone() },
-            hand_seed: random_number,
-            flop_seed_share: community_cards_secrets[0].1[i],
-            turn_seed_share: community_cards_secrets[1].1[i],
-            river_seed_share: community_cards_secrets[2].1[i],
+            hand: cards.clone(),
+            hand_secret: generate_random_number(&env, &mut counter)?,
+            flop_secret_share: community_cards_secrets[0].1[i],
+            turn_secret_share: community_cards_secrets[1].1[i],
+            river_secret_share: community_cards_secrets[2].1[i],
         };
 
         players.push(player);
     }
+
     let table = PokerTable {
-        game_state: GameState::PreFlop,
         hand_ref,
-        players,
-        community_cards: community_cards_wrapper,
+        players: players.clone(),
+        community_cards,
+        showdown_retrieved_at: None,
     };
 
     save_table(deps.storage, table_id, &table)?;
@@ -277,13 +289,16 @@ fn start_game(
     let response = ResponsePayload::StartGame(StartGameResponse {
         table_id,
         hand_ref,
-        players: players_pubkeys,
-        folded_win,
+        players: players.iter().map(|player| player.username.clone()).collect(),
     });
-    let json_response = serde_json_wasm::to_string(&response)
+
+    let response = serde_json_wasm::to_string(&response)
     .map_err(|e| cosmwasm_std::StdError::generic_err(format!("Serialization error: {}", e)))?;
 
-Ok(Response::new().add_attribute_plaintext("response", json_response))
+    let previous_hand_log = serde_json_wasm::to_string(&previous_hand_log)
+    .map_err(|e| cosmwasm_std::StdError::generic_err(format!("Serialization error: {}", e)))?;
+
+Ok(Response::new().add_attribute_plaintext("response", response).add_attribute_plaintext("previous_hand", previous_hand_log))
 }
 
 // fn generate_random_number(
@@ -316,44 +331,6 @@ fn generate_random_number(env: &Env, counter: &mut u128) -> StdResult<u64> {
     Ok(u64::from_le_bytes(secret[..8].try_into().unwrap()))
 }
 
-pub fn encrypt_cards<T>(secret: u64, cards: T) -> T
-where
-    T: Encryptable,
-{
-    cards.encrypt(secret)
-}
-
-/// Définition du Trait pour gérer les types `u8` et `Vec<u8>`
-pub trait Encryptable {
-    fn encrypt(self, secret: u64) -> Self;
-}
-
-/// Implémentation pour `u8`
-impl Encryptable for u8 {
-    fn encrypt(self, secret: u64) -> Self {
-        self.wrapping_add(secret as u8)
-    }
-}
-
-/// Implémentation pour `Vec<u8>`
-impl Encryptable for Vec<u8> {
-    fn encrypt(mut self, secret: u64) -> Self {
-        self.iter_mut().for_each(|card| *card = card.wrapping_add(secret as u8));
-        self
-    }
-}
-
-
-fn decrypt_cards(secret: u64, cards: Vec<u8>) -> Vec<u8> {
-    let mut decrypted_cards = Vec::new();
-    for card in cards {
-        decrypted_cards.push(card.wrapping_sub(secret as u8));
-    }
-
-    decrypted_cards
-}
-
-
 fn additive_secret_sharing(env: Env, players: usize, secret: u64, counter: &mut u128) -> Vec<u64> {
     let mut shares: Vec<u64> = Vec::new();
     let mut sum: u64 = 0;
@@ -369,154 +346,6 @@ fn additive_secret_sharing(env: Env, players: usize, secret: u64, counter: &mut 
 
     shares
 }
-
-#[cfg(test)]
-mod tests {
-    use cosmwasm_std::{attr, testing::{mock_dependencies, mock_env, mock_info}};
-
-    use super::*;
-
-
-    #[test]
-    fn test_random() {
-        let mut deps = mock_dependencies();
-        let env = mock_env();
-        let info = mock_info("creator", &[]);
-
-        let msg = InstantiateMsg {};
-        instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-
-        let msg = ExecuteMsg::Random {};
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-        assert_eq!(res.attributes.len(), 1);
-        assert!(res.attributes[0].key == "response");
-        println!("{:?}", res.attributes[0].value);
-    }
-
-    #[test]
-    fn test_init_counter() {
-        let env = mock_env();
-        let counter = init_counter(env);
-        println!("{:?}", counter);
-    }
-
-    #[test]
-    fn test_instantiate() {
-        let mut deps = mock_dependencies();
-        let env = mock_env();
-        let info = mock_info("creator", &[]);
-
-        let msg = InstantiateMsg {};
-        let res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-
-        assert_eq!(res.attributes, vec![attr("method", "instantiate")]);
-
-        let config = CONFIG_KEY.load(&deps.storage).unwrap();
-        assert_eq!(config.owner, info.sender);
-        assert_eq!(config.contract_address, env.contract.address);
-    }
-
-    #[test]
-    fn test_start_game() {
-        let mut deps = mock_dependencies();
-        let env = mock_env();
-        let info = mock_info("creator", &[]);
-
-        let msg = InstantiateMsg {};
-        instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-
-        let players = vec!["player1".to_string(), "player2".to_string()];
-        let msg = ExecuteMsg::StartGame {
-            table_id: 1,
-            hand_ref: 1,
-            players: players.clone(),
-            folded_win: false,
-        };
-
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-        assert_eq!(res.attributes, vec![attr("method", "start_game")]);
-
-        let table = load_table(&deps.storage, 1).unwrap();
-        assert_eq!(table.hand_ref, 1);
-        assert_eq!(table.players.len(), players.len());
-    }
-
-    #[test]
-    fn test_distribute_community_cards() {
-        let mut deps = mock_dependencies();
-        let env = mock_env();
-        let info = mock_info("creator", &[]);
-
-        let msg = InstantiateMsg {};
-        instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-
-        let players = vec!["player1".to_string(), "player2".to_string()];
-        let start_msg = ExecuteMsg::StartGame {
-            table_id: 1,
-            hand_ref: 1,
-            players: players.clone(),
-            folded_win: false,
-        };
-        execute(deps.as_mut(), env.clone(), info.clone(), start_msg).unwrap();
-
-        let msg = ExecuteMsg::CommunityCards {
-            table_id: 1,
-            game_state: GameState::Flop,
-        };
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-        assert_eq!(res.attributes, vec![attr("method", "distribute_community_cards")]);
-
-        let table = load_table(&deps.storage, 1).unwrap();
-        assert_eq!(table.game_state, GameState::Flop);
-    }
-
-    #[test]
-    fn test_showdown() {
-        let mut deps = mock_dependencies();
-        let env = mock_env();
-        let info = mock_info("creator", &[]);
-
-        let msg = InstantiateMsg {};
-        instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-
-        let players = vec!["player1".to_string(), "player2".to_string()];
-        let start_msg = ExecuteMsg::StartGame {
-            table_id: 1,
-            hand_ref: 1,
-            players: players.clone(),
-            folded_win: false,
-        };
-        execute(deps.as_mut(), env.clone(), info.clone(), start_msg).unwrap();
-
-        let msg = ExecuteMsg::Showdown {
-            table_id: 1,
-            all_in_showdown: true,
-            show_cards: players.clone(),
-        };
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-        assert_eq!(res.attributes, vec![attr("method", "showdown")]);
-
-        let table = load_table(&deps.storage, 1);
-        assert!(table.is_none());
-    }
-
-  
-}
-
-// fn generate_random_number_(
-//     env: &Env,
-// ) -> StdResult<u64> {
-//     let seed = env.block.random.as_ref().unwrap();
-//     let mut hasher = Sha256::new();
-
-//     hasher.update(seed.as_slice());
-    
-//     let final_hash = hasher.finalize();
-//     let final_seed = u64::from_le_bytes(final_hash[..8].try_into().unwrap());
-
-//     Ok(final_seed)
-// }
-
 
 fn shuffle_deck(deck: &mut Deck, final_seed: u64) {
     let mut deck_len = deck.cards.len();
@@ -551,8 +380,27 @@ pub fn query(
     match msg {
         QueryMsg::WithPermit { permit, query } => permit_queries(deps, permit, query),
         QueryMsg::CommunityCards { table_id, game_state, secret_key } => to_binary(&query_community_cards(deps, table_id, game_state, secret_key)),
+        QueryMsg::Showdown { table_id, flop_secret, turn_secret, river_secret, players_secrets } => to_binary(&query_showdown(deps, table_id, flop_secret, turn_secret, river_secret, players_secrets)),
     }
 }
+
+
+
+fn test_permit_queries(
+    deps: Deps,
+    pubkey: String,
+    query: QueryWithPermit,
+) -> StdResult<Binary> {
+    // Validate permit content
+
+    // Permit validated! We can now execute the query.
+    match query {
+        QueryWithPermit::PlayerPrivateData {table_id} => {
+            to_binary(&query_player_private_data(deps, table_id, pubkey))
+        },
+    }
+}
+
 
 fn permit_queries(
     deps: Deps,
@@ -578,7 +426,7 @@ fn permit_queries(
     }
 }
 
-fn query_player_private_data(deps: Deps, table_id: u32, pub_key: String) -> Result<PlayerDataResponse, QueryError> {
+fn query_player_private_data(deps: Deps, table_id: u32, pub_key: String) -> Result<Player, QueryError> {
     let table = load_table(deps.storage, table_id);
 
     if table.is_none() {
@@ -592,19 +440,7 @@ fn query_player_private_data(deps: Deps, table_id: u32, pub_key: String) -> Resu
         return Err(QueryError::PlayerNotFound { table_id, player: pub_key });
     }
 
-    let player = player.unwrap();
-
-    Ok(PlayerDataResponse {
-        table_id,
-        hand_ref: table.hand_ref,
-        hand: player.decrypted_hand.hole_cards.clone(),
-        hand_seed: player.hand_seed,
-        flop_secret: player.flop_seed_share,
-        turn_secret: player.turn_seed_share,
-        river_secret: player.river_seed_share,
-    })
-
-
+    Ok(player.unwrap().clone())
 }
 
 fn query_community_cards(deps: Deps, table_id: u32, game_state: GameState, secret_key: u64) -> Result<CommunityCardsResponse, QueryError> {
@@ -616,9 +452,9 @@ fn query_community_cards(deps: Deps, table_id: u32, game_state: GameState, secre
 
     let table = table.unwrap();
     let (stored_key, cards) = match game_state {
-        GameState::Flop => (table.community_cards.flop_secret, table.community_cards.decrypted.flop),
-        GameState::Turn => (table.community_cards.turn_secret, vec![table.community_cards.decrypted.turn]),
-        GameState::River => (table.community_cards.river_secret, vec![table.community_cards.decrypted.river]),
+        GameState::Flop => (table.community_cards.flop.secret, table.community_cards.flop.cards),
+        GameState::Turn => (table.community_cards.turn.secret, vec![table.community_cards.turn.card]),
+        GameState::River => (table.community_cards.river.secret, vec![table.community_cards.river.card]),
         _ => return Err(QueryError::InvalidGameState { game_state }),
     };
 
@@ -629,7 +465,7 @@ fn query_community_cards(deps: Deps, table_id: u32, game_state: GameState, secre
     Ok(CommunityCardsResponse {
         table_id,
         hand_ref: table.hand_ref,
-        game_state: table.game_state,
+        game_state,
         community_cards: cards,
     })
 }
@@ -644,31 +480,238 @@ fn query_showdown(deps: Deps, table_id: u32, flop_secret: Option<u64>, turn_secr
     let mut community_cards = Vec::new();
 
     if let Some(secret) = flop_secret {
-        if table.community_cards.flop_secret != secret {
+        if table.community_cards.flop.secret != secret {
             return Err(QueryError::InvalidViewingKey { key: secret });
         }
-        community_cards.extend(table.community_cards.decrypted.flop.clone());
+        community_cards.extend(table.community_cards.flop.cards.clone());
     }
 
     if let Some(secret) = turn_secret {
-        if table.community_cards.turn_secret != secret {
+        if table.community_cards.turn.secret != secret {
             return Err(QueryError::InvalidViewingKey { key: secret });
         }
-        community_cards.push(table.community_cards.decrypted.turn);
+        community_cards.push(table.community_cards.turn.card);
     }
 
     if let Some(secret) = river_secret {
-        if table.community_cards.river_secret != secret {
+        if table.community_cards.river.secret != secret {
             return Err(QueryError::InvalidViewingKey { key: secret });
         }
-        community_cards.push(table.community_cards.decrypted.river);
+        community_cards.push(table.community_cards.river.card);
     }
 
     let mut players_cards = Vec::new();
 
-    for (i, secret) in players_secrets.iter().enumerate() {
-        let player = table.players.iter().find(|player| &player.hand_seed == secret).ok_or_else(|| QueryError::PlayerNotFound { table_id, player: i.to_string() })?;
+    for secret in players_secrets.iter() {
+        let player = table.players.iter().find(|player| &player.hand_secret == secret).ok_or_else(|| QueryError::SecretNotFound { val: secret.to_string() })?;
         
-        players_cards.push((player.public_key.clone(), player.decrypted_hand.hole_cards.clone()));
+        players_cards.push((player.player_id.clone(), player.hand.clone()));
     }
+
+    Ok(ShowdownResponse {
+        table_id,
+        hand_ref: table.hand_ref,
+        players_cards,
+        community_cards: Some(community_cards),
+    })
+}
+
+#[cfg(test)]
+mod tests {
+
+use std::str::FromStr;
+
+use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+
+use super::*;
+
+
+    #[test]
+    fn test_random() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+
+        instantiate(deps.as_mut(), env.clone(), info.clone()).unwrap();
+
+        let msg = ExecuteMsg::Random {};
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        assert_eq!(res.attributes.len(), 1);
+        assert!(res.attributes[0].key == "response");
+        println!("{:?}", res.attributes[0].value);
+    }
+
+    #[test]
+    fn test_init_counter() {
+        let env = mock_env();
+        let counter = init_counter(env);
+        println!("{:?}", counter);
+    }
+
+    #[test]
+    fn start_game() {
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info("creator", &[]);
+
+        instantiate(deps.as_mut(), env.clone(), info.clone()).unwrap();
+
+        let players = vec![
+            StartGamePlayer {
+                username: "player1".to_string(),
+                player_id: Uuid::from_str("54d8f23e-3e5e-4462-910c-fb36079f6c31").unwrap(),
+                public_key: "public_key1".to_string(),
+            },
+            StartGamePlayer {
+                username: "player2".to_string(),
+                player_id: Uuid::from_str("955f039a-ab05-49f3-83a9-720980cf3832").unwrap(),
+                public_key: "public_key2".to_string(),
+            },
+        ];
+
+        let msg = ExecuteMsg::StartGame {
+            table_id: 1,
+            hand_ref: 1,
+            players,
+            prev_hand_showdown_players: vec![],
+        };
+
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        assert_eq!(res.attributes.len(), 2);
+        assert!(res.attributes[0].key == "response");
+        println!("{:?}", res.attributes[0].value);
+
+        let query = QueryWithPermit::PlayerPrivateData { table_id: 1 };
+
+        let res = test_permit_queries(deps.as_ref(), "public_key3".to_string(), query);
+        println!("{:?}", String::from_utf8(res.unwrap().to_vec()).unwrap());
+
+    }
+
+    #[test]
+fn test_query_showdown() {
+    let mut deps = mock_dependencies();
+    let env = mock_env();
+    let info = mock_info("creator", &[]);
+
+    // Initialiser le contrat
+    instantiate(deps.as_mut(), env.clone(), info.clone()).unwrap();
+
+    // Créer une table de jeu
+    let players = vec![
+        StartGamePlayer {
+            username: "player1".to_string(),
+            player_id: Uuid::from_str("54d8f23e-3e5e-4462-910c-fb36079f6c31").unwrap(),
+            public_key: "public_key1".to_string(),
+        },
+        StartGamePlayer {
+            username: "player2".to_string(),
+            player_id: Uuid::from_str("955f039a-ab05-49f3-83a9-720980cf3832").unwrap(),
+            public_key: "public_key2".to_string(),
+        },
+    ];
+
+    let msg = ExecuteMsg::StartGame {
+        table_id: 1,
+        hand_ref: 1,
+        players: players.clone(),
+        prev_hand_showdown_players: vec![],
+    };
+    execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+    // Distribuer les cartes communes (flop, turn, river)
+    let msg = ExecuteMsg::CommunityCards {
+        table_id: 1,
+        game_state: GameState::Flop,
+    };
+    execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+    let msg = ExecuteMsg::CommunityCards {
+        table_id: 1,
+        game_state: GameState::Turn,
+    };
+    execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+    let msg = ExecuteMsg::CommunityCards {
+        table_id: 1,
+        game_state: GameState::River,
+    };
+    execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+    // Récupérer les cartes lors du showdown
+    let table = load_table(deps.as_ref().storage, 1).unwrap();
+    let flop_secret = Some(table.community_cards.flop.secret);
+    let turn_secret = Some(table.community_cards.turn.secret);
+    let river_secret = Some(table.community_cards.river.secret);
+    let players_secrets = [table.players.iter().map(|player| player.hand_secret).collect(), 
+    vec![9812787349247034u64], 
+    vec![]].concat();
+
+    let msg = QueryMsg::Showdown {
+        table_id: 1,
+        flop_secret,
+        turn_secret,
+        river_secret,
+        players_secrets,
+    };
+    let res = query(deps.as_ref(), env.clone(), msg);
+
+    // Vérifier que la réponse contient les bonnes informations
+    let showdown = String::from_utf8(res.unwrap().to_vec());
+    println!("{:?}", showdown.unwrap());
+}
+
+#[test]
+fn test_query_community_cards() {
+    let mut deps = mock_dependencies();
+    let env = mock_env();
+    let info = mock_info("creator", &[]);
+
+    // Initialiser le contrat
+    instantiate(deps.as_mut(), env.clone(), info.clone()).unwrap();
+
+    // Créer une table de jeu
+    let players = vec![
+        StartGamePlayer {
+            username: "player1".to_string(),
+            player_id: Uuid::from_str("54d8f23e-3e5e-4462-910c-fb36079f6c31").unwrap(),
+            public_key: "public_key1".to_string(),
+        },
+        StartGamePlayer {
+            username: "player2".to_string(),
+            player_id: Uuid::from_str("955f039a-ab05-49f3-83a9-720980cf3832").unwrap(),
+            public_key: "public_key2".to_string(),
+        },
+    ];
+
+    let msg = ExecuteMsg::StartGame {
+        table_id: 1,
+        hand_ref: 1,
+        players: players.clone(),
+        prev_hand_showdown_players: vec![],
+    };
+    execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+    // Distribuer les cartes communes (flop)
+    let msg = ExecuteMsg::CommunityCards {
+        table_id: 1,
+        game_state: GameState::Flop,
+    };
+    execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+    // Récupérer les cartes communes avec une clé secrète
+    let table = load_table(deps.as_ref().storage, 1).unwrap();
+    let secret_key = table.community_cards.flop.secret;
+
+    let msg = QueryMsg::CommunityCards {
+        table_id: 1,
+        game_state: GameState::Flop,
+        secret_key,
+    };
+    let res = query(deps.as_ref(), env.clone(), msg);
+
+    // Vérifier que la réponse contient les bonnes informations
+    let community_cards = String::from_utf8(res.unwrap().to_vec());
+    println!("{:?}", community_cards.unwrap());
+}
 }
