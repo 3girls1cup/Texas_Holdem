@@ -30,10 +30,22 @@ pub enum ContractError {
     // issued when table is not found
     TableNotFound { table_id: u32 },
 
-    #[error("Custom Error val: {val:?}")]
+    #[error("Custom Error val: {val}")]
     CustomError { val: String },
     // Add any other custom errors you like here.
     // Look at https://docs.rs/thiserror/1.0.21/thiserror/ for details.
+
+    #[error("Serialization error: {error}")]
+    // issued when serialization fails
+    SerializationFailed {error: String},
+
+    #[error("Duplicate public key")]
+    // issued when public key is already in use
+    DuplicatePublicKeys {},
+
+    #[error("Players invalide count: {count}")]
+    // issued when player count is invalid
+    InvalidPlayerCount { count: usize },
 }
 
 #[derive(Error, Serialize, Deserialize, Clone, Debug, PartialEq)]

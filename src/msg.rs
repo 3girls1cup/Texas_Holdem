@@ -6,6 +6,11 @@ use uuid::Uuid;
 use crate::state::{Card, GameState};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct InstantiateMsg {
+    
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct StartGamePlayer {
     pub username: String,
     pub player_id: Uuid,
@@ -27,10 +32,8 @@ pub enum ExecuteMsg {
     Showdown {
         table_id: u32,
         game_state: GameState,
-        show_cards: Vec<String>, // player_ids of players whos cards are shown
+        showdown_player_ids: Vec<Uuid>, // player_ids of players whos cards are shown
     },
-    Random {
-    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -71,6 +74,7 @@ pub struct PlayerDataResponse {
 #[serde(tag = "type", rename_all = "snake_case")]  // Helps with JSON representation
 pub enum ResponsePayload {
     StartGame(StartGameResponse),
+    LastHand(Option<LastHandLogResponse>),
     CommunityCards(CommunityCardsResponse),
     Showdown(ShowdownResponse),
 }
