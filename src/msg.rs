@@ -7,7 +7,7 @@ use crate::state::{Card, GameState};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct InstantiateMsg {
-    
+
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -18,6 +18,7 @@ pub struct StartGamePlayer {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     StartGame {
         table_id: u32,
