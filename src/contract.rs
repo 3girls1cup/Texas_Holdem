@@ -392,11 +392,12 @@ mod execute_handlers {
             hand_ref,
             players: players.iter().map(|p| p.username.clone()).collect(),
         });
+        let mut res = create_plaintext_response(RESPONSE_KEY.to_string(), response)?;
 
-        serialize_response(vec![
-            (RESPONSE_KEY.to_string(), response),
-            ("previous_hand_log".to_string(), ResponsePayload::LastHand(previous_hand_log)),
-        ])
+        if let Some(previous_hand_log) = previous_hand_log {
+            res = res.add_attribute_plaintext("previous_hand_log", serialize_response(ResponsePayload::LastHand(Some(previous_hand_log)))?);
+        }
+        Ok(res)
     }
 
     fn create_previous_hand_log(deps: Deps, table_id: u32, showdown_player_ids: Vec<Uuid>) -> Result<Option<LastHandLogResponse>, ContractError> {
@@ -425,21 +426,22 @@ mod execute_handlers {
         Ok(previous_hand_log)
     }
 
-    fn serialize_response(
-        attributes: Vec<(String, ResponsePayload)>,
+    fn create_plaintext_response(
+        key: String,
+        response: ResponsePayload
     ) -> Result<Response, ContractError> {
-        let mut res = Response::new();
-        for (key, response) in attributes.iter() {
-            let json_response = match serde_json_wasm::to_string(&response) {
-                Ok(json) => json,
-                Err(e) => return Err(ContractError::SerializationFailed {
-                    error: e.to_string(),
-                }),
-            };
-            res = res.add_attribute_plaintext(key, json_response);
-        }
-        Ok(res)
+        Ok(Response::new().add_attribute_plaintext(key, serialize_response(response)?))
     }
+
+    fn serialize_response(response: ResponsePayload) -> Result<String, ContractError> {
+        match serde_json_wasm::to_string(&response) {
+            Ok(json) => Ok(json),
+            Err(e) => Err(ContractError::SerializationFailed {
+                error: e.to_string(),
+            }),
+        }
+    }
+
 
     pub fn handle_community_cards(
         deps: DepsMut,
@@ -481,7 +483,7 @@ mod execute_handlers {
             community_cards: cards.unwrap(),
         });
 
-        serialize_response(vec![(RESPONSE_KEY.to_string(), response)])
+        create_plaintext_response(RESPONSE_KEY.to_string(), response)
     }
 
     pub fn handle_showdown(
@@ -523,7 +525,7 @@ mod execute_handlers {
         table.showdown_retrieved_at = Some(env.block.time);
         save_table(deps.storage, table_id, &table)?;
 
-        serialize_response(vec![(RESPONSE_KEY.to_string(), response)])
+        create_plaintext_response(RESPONSE_KEY.to_string(), response)
     }
 
     fn handle_all_in_showdown(
