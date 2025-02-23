@@ -32,10 +32,15 @@ export const client1 = createSecretNetworkClient(wallet);
 export const client2 = createSecretNetworkClient(wallet2);
 export const client3 = createSecretNetworkClient(wallet3);
 
+export const random = {
+  random: {},
+}
+
 export const start_game = {
     start_game: {
-      table_id: 1,
+      table_id: 999,
       hand_ref: 1,
+      folded_win: true,
       players: [
         wallet.address,
         wallet2.address,

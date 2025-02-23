@@ -1,7 +1,7 @@
 {
-  "height": 9146588,
-  "timestamp": "2025-02-17T17:51:52Z",
-  "transactionHash": "19B605F70233B83AC5BDE4B4AA2490D7BA1801127C1DAE05BC2B7AB41914E378",
+  "height": 9191410,
+  "timestamp": "2025-02-20T14:19:28Z",
+  "transactionHash": "B29865DCF0881B553DE40F2328CE750AA849708A97ACB921CB28BDD2B080B816",
   "code": 0,
   "codespace": "",
   "info": "",
@@ -12,17 +12,9 @@
         {
           "@type": "/secret.compute.v1beta1.MsgExecuteContract",
           "sender": "secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3",
-          "contract": "secret1wswst34nygj7h26fn92w8g5mjwa4aeu0gf2xae",
+          "contract": "secret1kgcmgam0cps9e39pmv7s6tkcha6cl4cw43nm9t",
           "msg": {
-            "start_game": {
-              "table_id": 1,
-              "hand_ref": 1,
-              "players": [
-                "secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3",
-                "secret1verdmwf2e0d930vulxru5fg3lm9y8r3xg5u7l6",
-                "secret1xywlcys0sgvvjf60mtvvu63np9sr9qj9msf947"
-              ]
-            }
+            "random": {}
           },
           "callback_code_hash": "",
           "sent_funds": [],
@@ -46,7 +38,7 @@
               "mode": "SIGN_MODE_DIRECT"
             }
           },
-          "sequence": "116"
+          "sequence": "139"
         }
       ],
       "fee": {
@@ -63,7 +55,7 @@
       "tip": null
     },
     "signatures": [
-      "ZkqD+j9IVHSfNCPlxPQu6PAYvSKvXxtEnhpzwFtO9Y5/TeWUfvKiDqTI1d7aSDcLYjIM2syJPyVP63siiye7Rg=="
+      "Po8xpheqwUG+O20E5zh3lZ0BK4TQM7XWPOjXCVZcGDsfcC4SknVKI91/RIj+H+kOJlmfNEpiIx8opiitJkq1vw=="
     ]
   },
   "rawLog": "",
@@ -88,7 +80,7 @@
             },
             {
               "key": "contract_address",
-              "value": "secret1wswst34nygj7h26fn92w8g5mjwa4aeu0gf2xae"
+              "value": "secret1kgcmgam0cps9e39pmv7s6tkcha6cl4cw43nm9t"
             }
           ]
         },
@@ -97,7 +89,7 @@
           "attributes": [
             {
               "key": "contract_address",
-              "value": "secret1wswst34nygj7h26fn92w8g5mjwa4aeu0gf2xae"
+              "value": "secret1kgcmgam0cps9e39pmv7s6tkcha6cl4cw43nm9t"
             }
           ]
         },
@@ -106,11 +98,11 @@
           "attributes": [
             {
               "key": "contract_address",
-              "value": "secret1wswst34nygj7h26fn92w8g5mjwa4aeu0gf2xae"
+              "value": "secret1kgcmgam0cps9e39pmv7s6tkcha6cl4cw43nm9t"
             },
             {
               "key": "response",
-              "value": "{\"type\":\"start_game\",\"table_id\":1,\"hand_ref\":1,\"players\":[\"secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3\",\"secret1verdmwf2e0d930vulxru5fg3lm9y8r3xg5u7l6\",\"secret1xywlcys0sgvvjf60mtvvu63np9sr9qj9msf947\"],\"error\":null}"
+              "value": "[17787862850532583859, 17787862850532583859, 17787862850532583859, 17787862850532583859, 17787862850532583859, 17787862850532583859, 17787862850532583859, 17787862850532583859, 17787862850532583859, 17787862850532583859]"
             }
           ]
         }
@@ -140,25 +132,25 @@
       "msg": 0,
       "type": "message",
       "key": "contract_address",
-      "value": "secret1wswst34nygj7h26fn92w8g5mjwa4aeu0gf2xae"
+      "value": "secret1kgcmgam0cps9e39pmv7s6tkcha6cl4cw43nm9t"
     },
     {
       "msg": 0,
       "type": "execute",
       "key": "contract_address",
-      "value": "secret1wswst34nygj7h26fn92w8g5mjwa4aeu0gf2xae"
+      "value": "secret1kgcmgam0cps9e39pmv7s6tkcha6cl4cw43nm9t"
     },
     {
       "msg": 0,
       "type": "wasm",
       "key": "contract_address",
-      "value": "secret1wswst34nygj7h26fn92w8g5mjwa4aeu0gf2xae"
+      "value": "secret1kgcmgam0cps9e39pmv7s6tkcha6cl4cw43nm9t"
     },
     {
       "msg": 0,
       "type": "wasm",
       "key": "response",
-      "value": "{\"type\":\"start_game\",\"table_id\":1,\"hand_ref\":1,\"players\":[\"secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3\",\"secret1verdmwf2e0d930vulxru5fg3lm9y8r3xg5u7l6\",\"secret1xywlcys0sgvvjf60mtvvu63np9sr9qj9msf947\"],\"error\":null}"
+      "value": "[17787862850532583859, 17787862850532583859, 17787862850532583859, 17787862850532583859, 17787862850532583859, 17787862850532583859, 17787862850532583859, 17787862850532583859, 17787862850532583859, 17787862850532583859]"
     }
   ],
   "events": [
@@ -242,7 +234,7 @@
       "attributes": [
         {
           "key": "acc_seq",
-          "value": "secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3/116",
+          "value": "secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3/139",
           "index": true
         }
       ]
@@ -252,7 +244,7 @@
       "attributes": [
         {
           "key": "signature",
-          "value": "ZkqD+j9IVHSfNCPlxPQu6PAYvSKvXxtEnhpzwFtO9Y5/TeWUfvKiDqTI1d7aSDcLYjIM2syJPyVP63siiye7Rg==",
+          "value": "Po8xpheqwUG+O20E5zh3lZ0BK4TQM7XWPOjXCVZcGDsfcC4SknVKI91/RIj+H+kOJlmfNEpiIx8opiitJkq1vw==",
           "index": true
         }
       ]
@@ -292,7 +284,7 @@
         },
         {
           "key": "contract_address",
-          "value": "secret1wswst34nygj7h26fn92w8g5mjwa4aeu0gf2xae",
+          "value": "secret1kgcmgam0cps9e39pmv7s6tkcha6cl4cw43nm9t",
           "index": true
         },
         {
@@ -307,7 +299,7 @@
       "attributes": [
         {
           "key": "contract_address",
-          "value": "secret1wswst34nygj7h26fn92w8g5mjwa4aeu0gf2xae",
+          "value": "secret1kgcmgam0cps9e39pmv7s6tkcha6cl4cw43nm9t",
           "index": true
         },
         {
@@ -322,12 +314,12 @@
       "attributes": [
         {
           "key": "contract_address",
-          "value": "secret1wswst34nygj7h26fn92w8g5mjwa4aeu0gf2xae",
+          "value": "secret1kgcmgam0cps9e39pmv7s6tkcha6cl4cw43nm9t",
           "index": true
         },
         {
           "key": "response",
-          "value": "{\"type\":\"start_game\",\"table_id\":1,\"hand_ref\":1,\"players\":[\"secret16h9597w68zrs902mtdd3wcrqwdw6r223pxgue3\",\"secret1verdmwf2e0d930vulxru5fg3lm9y8r3xg5u7l6\",\"secret1xywlcys0sgvvjf60mtvvu63np9sr9qj9msf947\"],\"error\":null}",
+          "value": "[17787862850532583859, 17787862850532583859, 17787862850532583859, 17787862850532583859, 17787862850532583859, 17787862850532583859, 17787862850532583859, 17787862850532583859, 17787862850532583859, 17787862850532583859]",
           "index": true
         },
         {
@@ -344,7 +336,7 @@
       "data": []
     }
   ],
-  "gasUsed": 38098,
+  "gasUsed": 32857,
   "gasWanted": 40000,
   "ibcResponses": []
 }
