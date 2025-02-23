@@ -1,6 +1,5 @@
-import {random, wallet2, wallet3,createSecretNetworkClient, wallet, loadContractInfo, contractInfo, trx, start_game, flop, showdown_all_in, client1, execute, turn, river, showdown} from "./shared.js";
+import {random, player2, player3,createSecretNetworkClient, player, loadContractInfo, contractInfo, trx, start_game, flop, showdown_all_in, client1, execute, turn, river, showdown} from "./shared.js";
 import * as fs from "fs";
-const contractInfo2 = loadContractInfo("contractInfo2.json");
 
 
 // measureTrxTime(wallet.address, contractInfo);
@@ -26,12 +25,12 @@ let measureTrxTime = async (address, info) => {
   for (let i = 0; i < 10; i++) {
   
   }
-  await broadcast(wallet.address, client1, contractInfo, random);
+  await broadcast(player.address, client1, contractInfo, start_game);
 
   console.timeEnd("trxTime");
 };
 
-measureTrxTime(wallet.address, contractInfo);
+measureTrxTime(player.address, contractInfo);
 
 
 // execute(wallet.address, client1, contractInfo, start_game);

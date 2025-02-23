@@ -31,7 +31,7 @@ let upload_contract = async () => {
       builder: "",
     },
     {
-      gasLimit: 4_000_000,
+      gasLimit: 2_000_000,
     }
   );
 
@@ -40,7 +40,7 @@ let upload_contract = async () => {
       .value
   );
   console.log("codeId: ", codeId);
-
+  console.log(tx);
   contractCodeHash = (
     await secretjs.query.compute.codeHashByCodeId({ code_id: codeId })
   ).code_hash;
@@ -61,10 +61,10 @@ let instantiate_contract = async () => {
       sender: wallet.address,
       code_hash: contractCodeHash,
       init_msg: initMsg,
-      label: "rng tutorial" + Math.ceil(Math.random() * 10000),
+      label: "poker_test" + Math.ceil(Math.random() * 10000),
     },
     {
-      gasLimit: 100_000,
+      gasLimit: 50_000,
     }
   );
   console.log(tx);

@@ -14,37 +14,64 @@ export const loadContractInfo = (contractInfoPath) => {
 };
 
 export const contractInfo = loadContractInfo("contractInfo.json");
+const wallet = new Wallet("desk pigeon hammer sleep only mistake stool december offer patrol once vacant");
+const wallet2 = new Wallet("pigeon desk hammer sleep only mistake stool december offer patrol once vacant");
+const wallet3 = new Wallet("hammer desk pigeon sleep only mistake stool december offer patrol once vacant");
+export const player2 = {
+  username: "player2",
+  playerId: "3c835440-62b4-4750-946c-f0e622f5cd57",
+  wallet: wallet2,
+  address: wallet2.address,
+};
+export const player = {
+  username: "player",
+  playerId: "520b73c6-c4bf-4374-a63c-6a49b731e1cf",
+  wallet: wallet,
+  address: wallet.address,
+};
+export const player3 = {
+  username: "player3",
+  playerId: "3327ec7f-504e-4283-950a-47d602130d2e",
+  wallet: wallet3,
+  address: wallet3.address,
+};
 
-export const wallet2 = new Wallet("desk pigeon hammer sleep only mistake stool december offer patrol once vacant");
-export const wallet = new Wallet("pigeon desk hammer sleep only mistake stool december offer patrol once vacant");
-export const wallet3 = new Wallet("hammer desk pigeon sleep only mistake stool december offer patrol once vacant");
 
-export const createSecretNetworkClient = (wallet) => {
+
+export const createSecretNetworkClient = (player) => {
   return new SecretNetworkClient({
     chainId: "pulsar-3",
     url: "https://pulsar.lcd.secretnodes.com",
-    wallet: wallet,
-    walletAddress: wallet.address,
+    wallet: player.wallet,
+    walletAddress: player.address,
   });
 };
 
-export const client1 = createSecretNetworkClient(wallet);
-export const client2 = createSecretNetworkClient(wallet2);
-export const client3 = createSecretNetworkClient(wallet3);
+export const client1 = createSecretNetworkClient(player);
+export const client2 = createSecretNetworkClient(player2);
+export const client3 = createSecretNetworkClient(player3);
 
 export const random = {
   random: {},
+}
+
+
+const playerStartGame = (player) => {
+  return {
+    username: player.username,
+    player_id: player.playerId,
+    public_key: player.address,
+  }
 }
 
 export const start_game = {
     start_game: {
       table_id: 999,
       hand_ref: 1,
-      folded_win: true,
       players: [
-        wallet.address,
-        wallet2.address,
-        wallet3.address,
+        playerStartGame(player),
+        playerStartGame(player2),
+        playerStartGame(player3),
       ],
     },
   };
@@ -86,9 +113,9 @@ export const flop = {
         showdown: {
         table_id: 1,
         show_cards: [
-            wallet.address,
-            wallet2.address,
-            wallet3.address,
+            player.address,
+            player2.address,
+            player3.address,
         ],
         all_in_showdown: false,
         }
