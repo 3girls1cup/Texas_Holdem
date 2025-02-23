@@ -1,15 +1,16 @@
-use schemars::JsonSchema;
-use secret_toolkit_serialization::{Bincode2, Json};
+use secret_toolkit_serialization::Json;
 use secret_toolkit_storage::{Item, Keymap, KeymapBuilder, WithoutIter};
 use serde::{Deserialize, Serialize};
-use cosmwasm_std::{Addr, StdError, StdResult, Storage};
-
+use cosmwasm_std::{Addr, StdError, StdResult, Storage, Timestamp};
+use uuid::Uuid;
 
 pub const PREFIX_REVOKED_PERMITS: &str = "revoked_permits";
 
+pub static COUNTER_KEY: Item<u128> = Item::new(b"counter");
+
 pub static CONFIG_KEY: Item<Config> = Item::new(b"config");
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct Config {
     pub owner: Addr,
     pub contract_address: Addr,
@@ -34,67 +35,57 @@ pub fn delete_table(storage: &mut dyn Storage, key: u32) -> StdResult<()> {
     })
 }
 
-pub static PLAYER_SEED_STORE: Keymap<String, u64, Bincode2, WithoutIter> =
-            KeymapBuilder::new(b"seeds").without_iter().build();
-
-pub fn save_seed(storage: &mut dyn Storage, key: String, item: &u64) -> StdResult<()> {
-    PLAYER_SEED_STORE.insert(storage, &key, item).map_err(|err| {
-        StdError::generic_err(format!("Failed to save seed: {}", err))
-    })
-}
-
-pub fn load_seed(storage: &dyn Storage, key: String) -> Option<u64> {
-    PLAYER_SEED_STORE.get(storage, &key)
-}
-
-#[cfg(test)]
-mod tests {
-use cosmwasm_std::{testing::MockStorage, StdError};
-
-use super::*;
-    #[test]
-    fn test_keymap() -> StdResult<()> {
-        let mut storage = MockStorage::new();
-        let key = 1u32;
-        let item = PokerTable {
-            game_state: GameState::PreFlop,
-            hand_ref: 1,
-            player_cards: vec![(
-                "SDER".to_string(), 
-                PlayerCards { hole_cards: vec![] }
-            )],
-            community_cards: CommunityCards {
-                flop: vec![],
-                turn: 0,
-                river: 0,
-            },
-        };
-        TABLES_STORE.insert(&mut storage, &key, &item).map_err(|err| {
-            StdError::generic_err(format!("Failed to save table: {}", err))
-        })
-    }
-}
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-pub struct PlayerCards {
-    pub hole_cards: Vec<u8>, 
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct CommunityCards {
-    pub flop: Vec<u8>, 
-    pub turn: u8, 
-    pub river: u8, 
+    pub flop: Flop,
+    pub turn: Turn, 
+    pub river: River, 
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct Flop {
+    pub cards: Vec<Card>,
+    pub secret: u64,
+    pub retrieved_at: Option<Timestamp>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct Turn {
+    pub card: Card,
+    pub secret: u64,
+    pub retrieved_at: Option<Timestamp>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct River {
+    pub card: Card,
+    pub secret: u64,
+    pub retrieved_at: Option<Timestamp>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct PokerTable {
-    pub game_state: GameState,
     pub hand_ref: u32,
-    pub player_cards: Vec<(String, PlayerCards)>,  // player's public address as a key
-    pub community_cards: CommunityCards, 
+    pub players: Vec<Player>,
+    pub community_cards: CommunityCards,
+    pub showdown_retrieved_at: Option<Timestamp>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct Player {
+    pub username: String,
+    pub player_id: Uuid,
+    pub public_key: String,
+    pub hand: Vec<Card>,
+    pub hand_secret: u64,
+    pub flop_secret_share: u64,
+    pub turn_secret_share: u64,
+    pub river_secret_share: u64,
+}
+
+
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum GameState {
     PreFlop,
@@ -104,7 +95,7 @@ pub enum GameState {
 }
 
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct Card(u8);
 
 impl Card {
@@ -129,10 +120,16 @@ impl Card {
     pub fn from_bytes(byte: u8) -> Self {
         Card(byte)
     }
+
+    pub fn to_string(&self) -> String {
+        let suits = ["♠", "♥", "♦", "♣"];
+        let ranks = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
+        format!("{}{}", suits[self.suit() as usize], ranks[self.rank() as usize - 1])
+    }
 }
 
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct Deck {
     pub cards: Vec<Card>,
 }
@@ -155,5 +152,19 @@ impl Deck {
     pub fn from_bytes(bytes: &[u8]) -> Self {
         let cards = bytes.iter().map(|&b| Card(b)).collect();
         Deck { cards }
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+
+use super::*;
+    #[test]
+    fn cards() {
+        let deck = Deck::new();
+        for card in deck.cards.iter() {
+            println!("{}", card.to_string());
+        }
     }
 }
