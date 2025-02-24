@@ -1,5 +1,4 @@
 use cosmwasm_std::StdError;
-use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::state::GameState;
@@ -46,28 +45,4 @@ pub enum ContractError {
     #[error("Players invalide count: {count}")]
     // issued when player count is invalid
     InvalidPlayerCount { count: usize },
-}
-
-#[derive(Error, Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub enum QueryError {
-
-    #[error("Player {player} not found in table {table_id}")]
-    // issued when player is not found
-    PlayerNotFound { table_id: u32, player: String },
-
-    #[error("Table {table_id} not found")]
-    // issued when table is not found
-    TableNotFound { table_id: u32 },
-
-    #[error("Invalid game state: {game_state:?}")]
-    // issued when game state is invalid
-    InvalidGameState { game_state: GameState },
-    
-    #[error("Invalid viewing secret {key}")]
-    // issued when viewing key is invalid
-    InvalidViewingKey { key: u64 },
-
-    #[error("Secret doesn't exist: {val:?}")]
-    // issued when secret is not found
-    SecretNotFound { val: String },
 }

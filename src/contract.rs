@@ -8,7 +8,7 @@ use secret_toolkit_permit::{validate, Permit};
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
-use crate::error::{ContractError, QueryError};
+use crate::error::ContractError;
 use crate::msg::{
     CommunityCardsResponse, ExecuteMsg, InstantiateMsg, LastHandLogResponse, QueryMsg, QueryWithPermit, ResponsePayload, ShowdownPlayer, ShowdownResponse, StartGamePlayer, StartGameResponse
 };
@@ -92,6 +92,8 @@ mod state_utils {
 
 // Query handlers
 mod query_handlers {
+    use crate::msg::PlayerDataResponse;
+
     use super::*;
 
     pub fn handle_permit_query(
@@ -110,7 +112,8 @@ mod query_handlers {
 
         match query {
             QueryWithPermit::PlayerPrivateData { table_id } => {
-                to_binary(&query_player_private_data(deps, table_id, viewer))
+                let private_data = query_player_private_data(deps, table_id, viewer)?;
+                to_binary(&private_data)
             }
         }
     }
@@ -119,18 +122,24 @@ mod query_handlers {
         deps: Deps,
         table_id: u32,
         pub_key: String,
-    ) -> Result<Player, QueryError> {
+    ) -> StdResult<PlayerDataResponse> {
         let table =
-            load_table(deps.storage, table_id).ok_or(QueryError::TableNotFound { table_id })?;
+            load_table(deps.storage, table_id).ok_or(StdError::generic_err("No table found"))?;
 
         table
             .players
             .iter()
             .find(|p| p.public_key == pub_key)
             .cloned()
-            .ok_or(QueryError::PlayerNotFound {
+            .ok_or(StdError::generic_err("No player found"))
+            .map(|player| PlayerDataResponse {
                 table_id,
-                player: pub_key,
+                hand_ref: table.hand_ref,
+                hand: player.hand,
+                hand_secret: player.hand_secret,
+                flop_secret_share: player.flop_secret_share,
+                turn_secret_share: player.turn_secret_share,
+                river_secret_share: player.river_secret_share,
             })
     }
 
@@ -139,9 +148,9 @@ mod query_handlers {
         table_id: u32,
         game_state: GameState,
         secret_key: u64,
-    ) -> Result<CommunityCardsResponse, QueryError> {
+    ) -> StdResult<CommunityCardsResponse> {
         let table =
-            load_table(deps.storage, table_id).ok_or(QueryError::TableNotFound { table_id })?;
+            load_table(deps.storage, table_id).ok_or(StdError::generic_err("No table found"))?;
 
         let (stored_key, cards) = match game_state {
             GameState::Flop => (
@@ -156,11 +165,11 @@ mod query_handlers {
                 table.community_cards.river.secret,
                 vec![table.community_cards.river.card],
             ),
-            _ => return Err(QueryError::InvalidGameState { game_state }),
+            _ => return Err(StdError::generic_err("Invalid game state")),
         };
 
         if stored_key != secret_key {
-            return Err(QueryError::InvalidViewingKey { key: secret_key });
+            return Err(StdError::generic_err("Invalid viewing key"));
         }
 
         Ok(CommunityCardsResponse {
@@ -178,29 +187,29 @@ mod query_handlers {
         turn_secret: Option<u64>,
         river_secret: Option<u64>,
         players_secrets: Vec<u64>,
-    ) -> Result<ShowdownResponse, QueryError> {
+    ) -> StdResult<ShowdownResponse> {
         let table =
-            load_table(deps.storage, table_id).ok_or(QueryError::TableNotFound { table_id })?;
+            load_table(deps.storage, table_id).ok_or(StdError::generic_err("No table found"))?;
 
         let mut community_cards = Vec::new();
 
         if let Some(secret) = flop_secret {
             if table.community_cards.flop.secret != secret {
-                return Err(QueryError::InvalidViewingKey { key: secret });
+                return Err(StdError::generic_err("Invalid secret key"));
             }
             community_cards.extend(table.community_cards.flop.cards.clone());
         }
 
         if let Some(secret) = turn_secret {
             if table.community_cards.turn.secret != secret {
-                return Err(QueryError::InvalidViewingKey { key: secret });
+                return Err(StdError::generic_err("Invalid secret key"));
             }
             community_cards.push(table.community_cards.turn.card);
         }
 
         if let Some(secret) = river_secret {
             if table.community_cards.river.secret != secret {
-                return Err(QueryError::InvalidViewingKey { key: secret });
+                return Err(StdError::generic_err("Invalid secret key"));
             }
             community_cards.push(table.community_cards.river.card);
         }
@@ -213,9 +222,7 @@ mod query_handlers {
                     .iter()
                     .find(|player| &player.hand_secret == secret)
                     .map(|player| (player.player_id.clone(), player.hand.clone()))
-                    .ok_or_else(|| QueryError::SecretNotFound {
-                        val: secret.to_string(),
-                    })
+                    .ok_or_else(|| StdError::generic_err("Player not found"))
             })
             .collect::<Result<Vec<_>, _>>()?;
 
@@ -627,7 +634,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             secret_key,
         } => to_binary(&query_handlers::query_community_cards(
             deps, table_id, game_state, secret_key,
-        )),
+        )?),
         QueryMsg::Showdown {
             table_id,
             flop_secret,
@@ -641,6 +648,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             turn_secret,
             river_secret,
             players_secrets,
-        )),
+        )?),
     }
 }

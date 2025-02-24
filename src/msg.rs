@@ -65,10 +65,10 @@ pub struct PlayerDataResponse {
     pub table_id: u32,
     pub hand_ref: u32,
     pub hand: Vec<Card>,
-    pub hand_seed: u64,
-    pub flop_secret: u64,
-    pub turn_secret: u64,
-    pub river_secret: u64,
+    pub hand_secret: u64,
+    pub flop_secret_share: u64,
+    pub turn_secret_share: u64,
+    pub river_secret_share: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
