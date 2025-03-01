@@ -8,6 +8,7 @@ use secret_toolkit_permit::{validate, Permit};
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
+
 use crate::error::ContractError;
 use crate::msg::{
     CommunityCardsResponse, ExecuteMsg, InstantiateMsg, LastHandLogResponse, QueryMsg, QueryWithPermit, ResponsePayload, ShowdownPlayer, ShowdownResponse, StartGamePlayer, StartGameResponse
@@ -17,7 +18,6 @@ use crate::state::{
     Player, PokerTable, River, Turn, CONFIG_KEY, COUNTER_KEY, PREFIX_REVOKED_PERMITS,
 };
 
-// Constants
 const MIN_PLAYERS: usize = 2;
 const MAX_PLAYERS: usize = 9;
 const COMMUNITY_CARD_PHASES: usize = 3;
@@ -25,7 +25,6 @@ const SECRET_LENGTH: usize = 64;
 const RANDOM_SEED_SIZE: usize = 16;
 const RESPONSE_KEY: &str = "response";
 
-// Helper modules
 mod helpers {
     use super::*;
 
@@ -78,7 +77,7 @@ mod helpers {
     }
 }
 
-// State management
+
 mod state_utils {
     use super::*;
 
@@ -90,7 +89,7 @@ mod state_utils {
     }
 }
 
-// Query handlers
+
 mod query_handlers {
     use crate::msg::PlayerDataResponse;
 
@@ -113,7 +112,12 @@ mod query_handlers {
         match query {
             QueryWithPermit::PlayerPrivateData { table_id } => {
                 let private_data = query_player_private_data(deps, table_id, viewer)?;
-                to_binary(&private_data)
+                let serialized =         match serde_json_wasm::to_string(&private_data) {
+                    Ok(json) => Ok(json),
+                    Err(e) => Err(StdError::generic_err(e.to_string())),
+                };
+            
+           to_binary(&serialized?)
             }
         }
     }
@@ -136,10 +140,10 @@ mod query_handlers {
                 table_id,
                 hand_ref: table.hand_ref,
                 hand: player.hand,
-                hand_secret: player.hand_secret,
-                flop_secret_share: player.flop_secret_share,
-                turn_secret_share: player.turn_secret_share,
-                river_secret_share: player.river_secret_share,
+                hand_secret: player.hand_secret.to_string(),
+                flop_secret_share: player.flop_secret_share.to_string(),
+                turn_secret_share: player.turn_secret_share.to_string(),
+                river_secret_share: player.river_secret_share.to_string(),
             })
     }
 
@@ -235,7 +239,7 @@ mod query_handlers {
     }
 }
 
-// Execute handlers
+
 mod execute_handlers {
     use super::{state_utils::load_table_or_error, *};
 
@@ -308,15 +312,14 @@ mod execute_handlers {
         deck: &mut Deck,
         players: &[StartGamePlayer],
     ) -> Vec<(String, Vec<Card>)> {
-        let mut deck_iter = deck.cards.iter();
         players
             .iter()
             .map(|player| {
                 (
                     player.public_key.clone(),
                     vec![
-                        deck_iter.next().unwrap().clone(),
-                        deck_iter.next().unwrap().clone(),
+                        deck.cards.pop().unwrap().clone(),
+                        deck.cards.pop().unwrap().clone(),
                     ],
                 )
             })
@@ -330,7 +333,6 @@ mod execute_handlers {
         deck: &mut Deck,
         player_count: usize,
     ) -> Result<CommunityCards, ContractError> {
-        let mut deck_iter = deck.cards.iter();
 
         for _ in 0..COMMUNITY_CARD_PHASES {
             let secret = helpers::generate_random_number(env, counter)?;
@@ -340,25 +342,25 @@ mod execute_handlers {
 
         Ok(CommunityCards {
             flop: Flop {
-                cards: collect_cards(&mut deck_iter, 3),
+                cards: collect_cards(deck, 3),
                 secret: secrets[0].0,
                 retrieved_at: None,
             },
             turn: Turn {
-                card: deck_iter.next().unwrap().clone(),
+                card: deck.cards.pop().unwrap().clone(),
                 secret: secrets[1].0,
                 retrieved_at: None,
             },
             river: River {
-                card: deck_iter.next().unwrap().clone(),
+                card: deck.cards.pop().unwrap().clone(),
                 secret: secrets[2].0,
                 retrieved_at: None,
             },
         })
     }
 
-    fn collect_cards(iter: &mut std::slice::Iter<Card>, count: usize) -> Vec<Card> {
-        (0..count).filter_map(|_| iter.next().cloned()).collect()
+    fn collect_cards(deck: &mut Deck, count: usize) -> Vec<Card> {
+        (0..count).filter_map(|_| Some(deck.cards.pop().unwrap().clone())).collect()
     }
 
     fn create_players(
@@ -402,7 +404,7 @@ mod execute_handlers {
         let mut res = create_plaintext_response(RESPONSE_KEY.to_string(), response)?;
 
         if let Some(previous_hand_log) = previous_hand_log {
-            res = res.add_attribute_plaintext("previous_hand_log", serialize_response(ResponsePayload::LastHand(Some(previous_hand_log)))?);
+            res = res.add_attribute_plaintext("previous_hand_log", serialize_response(ResponsePayload::LastHand(previous_hand_log))?);
         }
         Ok(res)
     }
@@ -480,7 +482,7 @@ mod execute_handlers {
             }
         };
 
-        // Log the retrieved_at time
+        
         save_table(deps.storage, table_id, &table)?;
 
         let response = ResponsePayload::CommunityCards(CommunityCardsResponse {
@@ -528,7 +530,7 @@ mod execute_handlers {
             community_cards: handle_all_in_showdown(&table.community_cards, game_state),
         });
 
-        // Log the showdown retrieval time
+        
         table.showdown_retrieved_at = Some(env.block.time);
         save_table(deps.storage, table_id, &table)?;
 
@@ -556,7 +558,7 @@ mod execute_handlers {
     }
 }
 
-// Contract entry points
+
 #[entry_point]
 pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, _msg: InstantiateMsg,) -> Result<Response, StdError> {
     let config = Config {
@@ -649,5 +651,423 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             river_secret,
             players_secrets,
         )?),
+    }
+}
+
+#[cfg(test)]
+mod complete_tests {
+    use crate::contract::query_handlers::query_player_private_data;
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+    use cosmwasm_std::{coins, from_binary};
+    use super::*;
+
+    #[test]
+    fn test_instantiate() {
+        let mut deps = mock_dependencies();
+
+        let msg = InstantiateMsg {};
+        let info = mock_info("creator", &coins(1000, "earth"));
+
+        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+        assert_eq!(0, res.messages.len());
+    }
+
+    #[test]
+    fn test_start_game() {
+        let mut deps = mock_dependencies();
+
+        let msg = InstantiateMsg {};
+        let info = mock_info("creator", &coins(1000, "earth"));
+        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        let players = vec![
+            StartGamePlayer {
+                username: "player1".to_string(),
+                player_id: Uuid::parse_str("2928c53b-5d14-4a7c-b56e-83ef56a0644e").unwrap(),
+                public_key: "key1".to_string(),
+            },
+            StartGamePlayer {
+                username: "player2".to_string(),
+                player_id: Uuid::parse_str("8f204fcc-54a5-4473-8ac3-4845bff291ab").unwrap(),
+                public_key: "key2".to_string(),
+            },
+        ];
+
+        let res = execute(
+            deps.as_mut(),
+            mock_env(),
+            info,
+            ExecuteMsg::StartGame {
+                table_id: 1,
+                hand_ref: 1,
+                players,
+                prev_hand_showdown_players: vec![],
+            },
+        )
+        .unwrap();
+        
+        let attrs = &res.attributes;
+        let response_attr = attrs.iter().find(|attr| attr.key == "response").unwrap();
+        assert!(response_attr.value.contains("\"players\":[\"player1\",\"player2\"]"));
+        assert!(response_attr.value.contains("\"table_id\":1"));
+        assert!(response_attr.value.contains("\"hand_ref\":1"));
+
+        let player_info1 = query_player_private_data(deps.as_ref(), 1, "key1".to_string()).unwrap();
+        let player_info2 = query_player_private_data(deps.as_ref(), 1, "key2".to_string()).unwrap();
+        
+        
+        assert_eq!(player_info1.table_id, 1);
+        assert_eq!(player_info1.hand_ref, 1);
+        assert_eq!(player_info1.hand.len(), 2);
+        assert!(player_info1.flop_secret_share.parse::<u64>().is_ok());
+        
+        assert_eq!(player_info2.table_id, 1);
+        assert_eq!(player_info2.hand_ref, 1);
+        assert_eq!(player_info2.hand.len(), 2);
+        assert!(player_info2.flop_secret_share.parse::<u64>().is_ok());
+        
+        let flop_secret = addition_shares(vec![
+            player_info1.flop_secret_share.parse::<u64>().unwrap(),
+            player_info2.flop_secret_share.parse::<u64>().unwrap(),
+        ]);
+        let turn_secret = addition_shares(vec![
+            player_info1.turn_secret_share.parse::<u64>().unwrap(),
+            player_info2.turn_secret_share.parse::<u64>().unwrap(),
+        ]);
+        let river_secret = addition_shares(vec![
+            player_info1.river_secret_share.parse::<u64>().unwrap(),
+            player_info2.river_secret_share.parse::<u64>().unwrap(),
+        ]);
+
+        
+        let res = query(
+            deps.as_ref(),
+            mock_env(),
+            QueryMsg::CommunityCards {
+                table_id: 1,
+                game_state: GameState::Flop,
+                secret_key: flop_secret,
+            },
+        );
+        let flop_response: CommunityCardsResponse = from_binary(res.as_ref().unwrap()).unwrap();
+        assert_eq!(flop_response.table_id, 1);
+        assert_eq!(flop_response.hand_ref, 1);
+        assert_eq!(flop_response.game_state, GameState::Flop);
+        assert_eq!(flop_response.community_cards.len(), 3);
+
+        
+        let res = query(
+            deps.as_ref(),
+            mock_env(),
+            QueryMsg::CommunityCards {
+                table_id: 1,
+                game_state: GameState::Turn,
+                secret_key: turn_secret,
+            },
+        );
+        let turn_response: CommunityCardsResponse = from_binary(res.as_ref().unwrap()).unwrap();
+        assert_eq!(turn_response.table_id, 1);
+        assert_eq!(turn_response.hand_ref, 1);
+        assert_eq!(turn_response.game_state, GameState::Turn);
+        assert_eq!(turn_response.community_cards.len(), 1);
+
+        
+        let res = query(
+            deps.as_ref(),
+            mock_env(),
+            QueryMsg::CommunityCards {
+                table_id: 1,
+                game_state: GameState::River,
+                secret_key: river_secret,
+            },
+        );
+        let river_response: CommunityCardsResponse = from_binary(res.as_ref().unwrap()).unwrap();
+        assert_eq!(river_response.table_id, 1);
+        assert_eq!(river_response.hand_ref, 1);
+        assert_eq!(river_response.game_state, GameState::River);
+        assert_eq!(river_response.community_cards.len(), 1);
+
+        
+        let res = query(
+            deps.as_ref(),
+            mock_env(),
+            QueryMsg::CommunityCards {
+                table_id: 1,
+                game_state: GameState::Flop,
+                secret_key: flop_secret + 1, 
+            },
+        );
+        assert!(res.is_err());
+    }
+    
+    #[test]
+    fn test_community_cards() {
+        let mut deps = mock_dependencies();
+        
+        
+        let msg = InstantiateMsg {};
+        let info = mock_info("creator", &coins(1000, "earth"));
+        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        
+        
+        let players = vec![
+            StartGamePlayer {
+                username: "player1".to_string(),
+                player_id: Uuid::parse_str("2928c53b-5d14-4a7c-b56e-83ef56a0644e").unwrap(),
+                public_key: "key1".to_string(),
+            },
+            StartGamePlayer {
+                username: "player2".to_string(),
+                player_id: Uuid::parse_str("8f204fcc-54a5-4473-8ac3-4845bff291ab").unwrap(),
+                public_key: "key2".to_string(),
+            },
+        ];
+        
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            ExecuteMsg::StartGame {
+                table_id: 1,
+                hand_ref: 1,
+                players,
+                prev_hand_showdown_players: vec![],
+            },
+        )
+        .unwrap();
+        
+        
+        let res = execute(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            ExecuteMsg::CommunityCards {
+                table_id: 1,
+                game_state: GameState::Flop,
+            },
+        )
+        .unwrap();
+        
+        
+        let attrs = &res.attributes;
+        println!("{:?}", attrs);
+        let response_attr = attrs.iter().find(|attr| attr.key == "response").unwrap();
+        assert!(response_attr.value.contains("\"game_state\":\"flop\""));
+        
+        
+        let res = execute(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            ExecuteMsg::CommunityCards {
+                table_id: 1,
+                game_state: GameState::Turn,
+            },
+        )
+        .unwrap();
+        
+        
+        let attrs = &res.attributes;
+        let response_attr = attrs.iter().find(|attr| attr.key == "response").unwrap();
+        assert!(response_attr.value.contains("\"game_state\":\"turn\""));
+        let response_payload: ResponsePayload = serde_json_wasm::from_str(&response_attr.value).unwrap();
+        match response_payload {
+            ResponsePayload::CommunityCards(cards_response) => {
+            assert_eq!(cards_response.community_cards.len(), 1);
+            assert_eq!(cards_response.game_state, GameState::Turn);
+            },
+            _ => panic!("Expected CommunityCards response"),
+        }
+    }
+    
+    #[test]
+    fn test_invalid_game_state() {
+        let mut deps = mock_dependencies();
+        
+        let msg = InstantiateMsg {};
+        let info = mock_info("creator", &coins(1000, "earth"));
+        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        
+        let players = vec![
+            StartGamePlayer {
+                username: "player1".to_string(),
+                player_id: Uuid::parse_str("2928c53b-5d14-4a7c-b56e-83ef56a0644e").unwrap(),
+                public_key: "key1".to_string(),
+            },
+            StartGamePlayer {
+                username: "player2".to_string(),
+                player_id: Uuid::parse_str("8f204fcc-54a5-4473-8ac3-4845bff291ab").unwrap(),
+                public_key: "key2".to_string(),
+            },
+        ];
+        
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            ExecuteMsg::StartGame {
+                table_id: 1,
+                hand_ref: 1,
+                players,
+                prev_hand_showdown_players: vec![],
+            },
+        )
+        .unwrap();
+        
+        
+        let res = execute(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            ExecuteMsg::CommunityCards {
+                table_id: 1,
+                game_state: GameState::PreFlop,
+            },
+        );
+        
+        assert!(res.is_err());
+        match res.unwrap_err() {
+            ContractError::GameStateError { method, table_id, game_state } => {
+                assert_eq!(method, "distribute_community_cards");
+                assert_eq!(table_id, 1);
+                assert_eq!(game_state, Some(GameState::PreFlop));
+            },
+            _ => panic!("Expected GameStateError"),
+        }
+    }
+    
+    #[test]
+    fn test_showdown() {
+        let mut deps = mock_dependencies();
+        
+        
+        let msg = InstantiateMsg {};
+        let info = mock_info("creator", &coins(1000, "earth"));
+        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        
+        
+        let player1_id = Uuid::parse_str("2928c53b-5d14-4a7c-b56e-83ef56a0644e").unwrap();
+        let player2_id = Uuid::parse_str("8f204fcc-54a5-4473-8ac3-4845bff291ab").unwrap();
+        
+        let players = vec![
+            StartGamePlayer {
+                username: "player1".to_string(),
+                player_id: player1_id,
+                public_key: "key1".to_string(),
+            },
+            StartGamePlayer {
+                username: "player2".to_string(),
+                player_id: player2_id,
+                public_key: "key2".to_string(),
+            },
+        ];
+        
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            ExecuteMsg::StartGame {
+                table_id: 1,
+                hand_ref: 1,
+                players,
+                prev_hand_showdown_players: vec![],
+            },
+        )
+        .unwrap();
+        
+        
+        let res = execute(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            ExecuteMsg::Showdown {
+                table_id: 1,
+                game_state: GameState::River,
+                showdown_player_ids: vec![player1_id, player2_id],
+            },
+        )
+        .unwrap();
+        
+        
+        let attrs = &res.attributes;
+        let response_attr = attrs.iter().find(|attr| attr.key == "response").unwrap();
+        assert!(response_attr.value.contains("\"players_cards\""));
+    }
+    
+    #[test]
+    fn test_player_not_found() {
+        let mut deps = mock_dependencies();
+        
+        
+        let msg = InstantiateMsg {};
+        let info = mock_info("creator", &coins(1000, "earth"));
+        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        
+        
+        let player1_id = Uuid::parse_str("2928c53b-5d14-4a7c-b56e-83ef56a0644e").unwrap();
+        let player2_id = Uuid::parse_str("e6799ecf-f202-418a-a535-0b42509f69f7").unwrap();
+
+        let players = vec![
+            StartGamePlayer {
+                username: "player1".to_string(),
+                player_id: player1_id,
+                public_key: "key1".to_string(),
+            },
+            StartGamePlayer {
+                username: "player2".to_string(),
+                player_id: player2_id,
+                public_key: "key2".to_string(),
+            },
+        ];
+        
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            ExecuteMsg::StartGame {
+                table_id: 1,
+                hand_ref: 1,
+                players,
+                prev_hand_showdown_players: vec![],
+            },
+        )
+        .unwrap();
+        
+        
+        let non_existent_player = Uuid::parse_str("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee").unwrap();
+        let res = execute(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            ExecuteMsg::Showdown {
+                table_id: 1,
+                game_state: GameState::River,
+                showdown_player_ids: vec![non_existent_player],
+            },
+        );
+        
+        assert!(res.is_err());
+        match res.unwrap_err() {
+            ContractError::PlayerNotFound { table_id, player } => {
+                assert_eq!(table_id, 1);
+                assert_eq!(player, non_existent_player.to_string());
+            },
+            _ => panic!("Expected PlayerNotFound error"),
+        }
+    }
+
+    pub fn addition_shares(shares: Vec<u64>) -> u64 {
+        shares.iter().copied().fold(0u64, u64::wrapping_add)
+    }
+
+    #[test]
+    fn test_additive_sharing() {
+        let secret = 14151497078262209000u64;
+    let mut counter = 0;
+    let shares = helpers::additive_secret_sharing(&mock_env(), 2, secret, &mut counter).unwrap();
+    let shares = [8676118583430535000, 5475378494831674000, ];
+         let sum = shares.iter().copied().fold(0u64, u64::wrapping_add);
+         println!("{:?}", sum);
+        assert_eq!(sum, secret);
     }
 }

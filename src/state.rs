@@ -122,7 +122,14 @@ impl Card {
     }
 
     pub fn to_string(&self) -> String {
-        let suits = ["♠", "♥", "♦", "♣"];
+        /* Order of suits in this list is relatively important (as they are mostly continuous digits, ranks is pretty hard to f*** up...),
+         * this list of suits should be in the same order in the backend and frontend executing/querying the contract.
+         * This order is crucial because the contract logs the cards from the last game 
+         * (for audit purposes) in the transaction log (unencrypted plaintext) of each StartGameResponse. 
+         * Thus, by doing so, the last_hand_log will match what the player sees in his game, and what will be stored in the
+         * backend database. Anyways, for audit purposes it's not a big deal, we can always map the suits to the correct ones by permutation.
+         */ 
+        let suits = ["♣", "♦", "♥", "♠"]; 
         let ranks = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
         format!("{}{}", suits[self.suit() as usize], ranks[self.rank() as usize - 1])
     }
@@ -164,6 +171,7 @@ use super::*;
     fn cards() {
         let deck = Deck::new();
         for card in deck.cards.iter() {
+            println!("{}", card.to_bytes());
             println!("{}", card.to_string());
         }
     }

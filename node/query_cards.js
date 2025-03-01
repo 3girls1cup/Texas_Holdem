@@ -1,36 +1,9 @@
-import { SecretNetworkClient, Wallet } from "secretjs";
-import * as fs from "fs";
-import { client1} from "./shared.js";
-// import dotenv from "dotenv";
-// dotenv.config();
-
-// const wallet = new Wallet(process.env.MNEMONIC);
-const wallet = new Wallet("pigeon desk hammer sleep only mistake stool december offer patrol once vacant");
-const wallet2 = new Wallet("desk pigeon hammer sleep only mistake stool december offer patrol once vacant");
-const wallet3 = new Wallet("hammer desk pigeon sleep only mistake stool december offer patrol once vacant");
-const wallet4 = new Wallet("pigeon desk hammer sleep mistake only stool december offer patrol once vacant");
-
-
-let contractInfo = {
-  contractAddress: "",
-  contractCodeHash: "",
-}
-const s: import("secretjs/dist/extensions/snip1155/types/send.js").SendAction
-const contractInfoPath = "contractInfo.json";
-if (fs.existsSync(contractInfoPath)) {
-  const contractInfoData = fs.readFileSync(contractInfoPath, "utf8");
-  contractInfo = JSON.parse(contractInfoData);
-  console.log("Contract info loaded:", contractInfo);
-} else {
-  console.error("Contract info file not found:", contractInfoPath);
-}
+import { PlayerDataResponse } from "./msg-models/player-data-response.js";
+import {community_cards_query, showdown_query, random,playerTest, clientTest, client2, chainId,  player2, player3,createSecretNetworkClient, player, loadContractInfo, contractInfo, trx, start_game, flop, showdown_all_in, client1, execute, turn, river, showdown} from "./shared.js";
 
 let permitName = "query_cards";
 let allowedTokens = [contractInfo.contractAddress];
-let chainId = "pulsar-3";
 let permissions = ["allowance"];
-
-
 
 let getSignature =  async (wallet) => {
     const { signature } = await wallet.signAmino(
@@ -63,14 +36,14 @@ let getSignature =  async (wallet) => {
     return signature;
     };
 
-let query_cards = async (secretjs, signature) => {
+let get_player_info = async (secretjs, signature) => {
   const res = await secretjs.query.compute.queryContract(
     {
       contract_address: contractInfo.contractAddress,
       code_hash: contractInfo.contractCodeHash,
       query: {
         with_permit: {
-          query: { get_player_cards: {table_id: 1} },
+          query: { player_private_data: {table_id: 999} },
           permit: {
             params: {
               permit_name: permitName,
@@ -85,12 +58,63 @@ let query_cards = async (secretjs, signature) => {
     },
   );
 
-  console.log(res);
+  return res;
 };
-let signature = await getSignature(wallet);
-// console.log(wallet2.address);
+
+async function calls(client, signature) {
+  const res = await get_player_info(client, signature);
+  console.log(res);
+  const parsed = PlayerDataResponse.fromJson(res);
+  console.log(parsed);
+}
+let signature2 = await getSignature(player2.wallet);
+let signature3 = await getSignature(player3.wallet);
+
+function parseLargeNumbers(jsonString) {
+  return JSON.parse(jsonString, (key, value) => {
+    // Convert large numbers to BigInt
+    if (typeof value === 'string' && /^\d+$/.test(value)) {
+      return BigInt(value);
+    }
+    return value;
+  });
+}
+
+const player_info2 = parseLargeNumbers(await get_player_info(client2, signature2));
+const player_info3 = parseLargeNumbers(await get_player_info(client2, signature3));
+
+console.log(player_info2);
+let query = async (secretjs, msg) => {
+  const res = await secretjs.query.compute.queryContract(
+    {
+      contract_address: contractInfo.contractAddress,
+      code_hash: contractInfo.contractCodeHash,
+      query: {
+      ...msg,
+      },
+    },
+  );
+
+  return res;
+};
+
+function wrappingAdd(a, b) {
+  const mask = (1n << 64n) - 1n; // Masque pour 64 bits (2^64 - 1)
+  return (a + b) & mask; // Appliquer le masque pour simuler le wrapping
+}
+
+function additionShares(shares) {
+  return shares.reduce((sum, share) => wrappingAdd(sum, BigInt(share)), 0n);
+}
+
+const additiveSecret = additionShares([BigInt(player_info2.flop_secret_share), BigInt(player_info3.flop_secret_share)]);
+// 4499291295878049100;
+console.log(additiveSecret.toString());
+const msg = showdown_query([player_info2.hand_secret, player_info3.hand_secret], additiveSecret.toString());
 try {
-  query_cards(client1, signature);
+  query(client1, msg).then((res) => {
+    console.log(res);
+  });
 } catch (error) {
   console.error("Error querying contract:", error);
 }

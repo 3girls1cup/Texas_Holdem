@@ -31,7 +31,7 @@ let upload_contract = async () => {
       builder: "",
     },
     {
-      gasLimit: 2_000_000,
+      gasLimit: 1_500_000,
     }
   );
 
